@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Pickleball SG — SportyGo</title>
+  <style>
+    /* ── CSS Custom Properties ─────────────────────────────── */
+    :root {
+      --bg: #0B0F19;
+      --card: #161F30;
+      --accent: #DFFF00;
+      --text: #FFFFFF;
+      --muted: #94A3B8;
+      --success: #22c55e;
+      --error: #ef4444;
+      --border: rgba(148,163,184,0.15);
+      --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      --radius: 12px;
+      --radius-sm: 8px;
+      --transition: 200ms ease;
+    }
+
+    /* ── Reset ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font);
+      min-height: 100vh;
+      line-height: 1.5;
+    }
+    button { cursor: pointer; font-family: inherit; border: none; background: none; }
+    input { font-family: inherit; }
+
+    /* ── Accessibility ─────────────────────────────────────── */
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+    #a11y-live {
+      position: absolute; width: 1px; height: 1px;
+      overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap;
+    }
+
+    /* ── Reduced Motion ────────────────────────────────────── */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 0ms !important; animation-duration: 0ms !important; }
+    }
+
+    /* ── App Shell ─────────────────────────────────────────── */
+    #app { max-width: 920px; margin: 0 auto; padding: 0 20px 64px; min-height: 100vh; }
+
+    /* ── Header ────────────────────────────────────────────── */
+    .app-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 20px 0 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 36px;
+    }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon {
+      width: 38px; height: 38px;
+      background: var(--accent); border-radius: 9px;
+      display: flex; align-items: center; justify-content: center;
+      color: #000; font-weight: 900; font-size: 0.95rem; letter-spacing: -0.05em;
+    }
+    .logo-name { font-weight: 700; font-size: 1.1rem; }
+    .logo-sub {
+      display: block; font-size: 0.65rem; color: var(--muted);
+      text-transform: uppercase; letter-spacing: 0.1em; font-weight: 400;
+    }
+    .back-btn {
+      display: none; align-items: center; gap: 6px;
+      border: 1px solid var(--border); color: var(--muted);
+      padding: 8px 16px; border-radius: var(--radius-sm);
+      font-size: 0.85rem; transition: all var(--transition);
+    }
+    .back-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .back-btn.visible { display: flex; }
+
+    /* ── Screen Transitions ────────────────────────────────── */
+    .screen { display: none; animation: fadeUp 220ms ease; }
+    .screen.active { display: block; }
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(10px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ── Step Progress Bar ─────────────────────────────────── */
+    .steps { display: flex; gap: 6px; margin-bottom: 32px; }
+    .step { flex: 1; height: 4px; border-radius: 2px; background: var(--border); transition: background var(--transition); }
+    .step.done   { background: var(--accent); }
+    .step.active { background: rgba(223,255,0,0.45); }
+
+    /* ── Hero Block ────────────────────────────────────────── */
+    .hero {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 40px 32px;
+      margin-bottom: 36px;
+      position: relative; overflow: hidden;
+    }
+    .hero::before {
+      content: '';
+      position: absolute; top: -60px; right: -60px;
+      width: 280px; height: 280px;
+      background: radial-gradient(circle, rgba(223,255,0,0.07) 0%, transparent 65%);
+      pointer-events: none;
+    }
+    .hero-eyebrow {
+      font-size: 0.72rem; text-transform: uppercase;
+      letter-spacing: 0.14em; color: var(--accent);
+      font-weight: 700; margin-bottom: 12px;
+    }
+    .hero-title { font-size: 2rem; font-weight: 800; line-height: 1.12; margin-bottom: 12px; }
+    .hero-desc { color: var(--muted); font-size: 0.92rem; max-width: 440px; }
+    @media (max-width: 640px) { .hero-title { font-size: 1.5rem; } .hero { padding: 28px 20px; } }
+
+    /* ── Section Typography ────────────────────────────────── */
+    .section-title { font-size: 1.45rem; font-weight: 700; margin-bottom: 6px; }
+    .section-sub   { color: var(--muted); font-size: 0.9rem; margin-bottom: 28px; }
+    .slot-label    { font-size: 0.82rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 12px; }
+
+    /* ── Booking Type Tiles ────────────────────────────────── */
+    .tile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 32px; }
+    @media (max-width: 580px) { .tile-grid { grid-template-columns: 1fr; } }
+    .tile {
+      background: var(--card); border: 2px solid var(--border);
+      border-radius: var(--radius); padding: 26px 22px;
+      cursor: pointer; transition: all var(--transition); text-align: left;
+    }
+    .tile:hover  { border-color: rgba(223,255,0,0.35); }
+    .tile.selected { border-color: var(--accent); background: rgba(223,255,0,0.055); }
+    .tile-icon   { font-size: 2.2rem; margin-bottom: 14px; }
+    .tile-title  { font-weight: 700; font-size: 1.05rem; margin-bottom: 5px; }
+    .tile-desc   { color: var(--muted); font-size: 0.84rem; line-height: 1.5; }
+    .tile-badge  {
+      display: inline-block; margin-top: 12px;
+      background: rgba(223,255,0,0.1); color: var(--accent);
+      font-size: 0.72rem; font-weight: 700;
+      padding: 4px 12px; border-radius: 20px; letter-spacing: 0.03em;
+    }
+
+    /* ── Buttons ───────────────────────────────────────────── */
+    .btn-primary {
+      display: block; width: 100%;
+      background: var(--accent); color: #000;
+      font-weight: 700; font-size: 0.97rem;
+      padding: 15px 24px; border-radius: var(--radius);
+      transition: all var(--transition); letter-spacing: -0.01em;
+    }
+    .btn-primary:hover:not(:disabled) {
+      background: #ccee00; transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(223,255,0,0.22);
+    }
+    .btn-primary:disabled { opacity: 0.38; cursor: not-allowed; transform: none; box-shadow: none; }
+
+    /* ── Duration Pills ────────────────────────────────────── */
+    .pill-row { display: flex; gap: 10px; margin-bottom: 28px; flex-wrap: wrap; }
+    .pill {
+      background: var(--card); border: 2px solid var(--border);
+      color: var(--text); padding: 9px 22px; border-radius: 24px;
+      font-size: 0.88rem; font-weight: 600; cursor: pointer;
+      transition: all var(--transition);
+    }
+    .pill:hover    { border-color: rgba(223,255,0,0.4); }
+    .pill.selected { border-color: var(--accent); color: var(--accent); background: rgba(223,255,0,0.07); }
+
+    /* ── Date Strip ────────────────────────────────────────── */
+    .date-strip-wrap {
+      overflow-x: auto; -webkit-overflow-scrolling: touch;
+      scrollbar-width: none; padding-bottom: 6px; margin-bottom: 28px;
+    }
+    .date-strip-wrap::-webkit-scrollbar { display: none; }
+    .date-strip { display: flex; gap: 10px; width: max-content; }
+    .date-card {
+      background: var(--card); border: 2px solid var(--border);
+      border-radius: var(--radius-sm); padding: 11px 16px;
+      cursor: pointer; min-width: 66px; text-align: center;
+      transition: all var(--transition);
+    }
+    .date-card:hover { border-color: rgba(223,255,0,0.4); }
+    .date-card.selected { border-color: var(--accent); background: rgba(223,255,0,0.07); }
+    .date-card.today .day-num { color: var(--accent); }
+    .day-name  { font-size: 0.68rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+    .day-num   { font-size: 1.35rem; font-weight: 800; line-height: 1.1; }
+    .month-lbl { font-size: 0.68rem; color: var(--muted); }
+
+    /* ── Slot Grid ─────────────────────────────────────────── */
+    .slot-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px; margin-bottom: 32px;
+    }
+    @media (max-width: 640px)  { .slot-grid { grid-template-columns: repeat(2, 1fr); } }
+    @media (min-width: 641px) and (max-width: 1024px) { .slot-grid { grid-template-columns: repeat(3, 1fr); } }
+    .slot {
+      background: var(--card); border: 2px solid var(--border);
+      border-radius: var(--radius-sm); padding: 11px 8px;
+      text-align: center; font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; transition: all var(--transition); line-height: 1.3;
+    }
+    .slot:hover:not(.booked) { border-color: rgba(223,255,0,0.4); }
+    .slot.selected { border-color: var(--accent); background: rgba(223,255,0,0.07); color: var(--accent); }
+    .slot.booked   { opacity: 0.3; cursor: not-allowed; border-style: dashed; }
+    .slot-sub      { font-size: 0.68rem; color: var(--muted); font-weight: 400; margin-top: 3px; }
+
+    /* ── Empty / No-slot State ─────────────────────────────── */
+    .no-slots {
+      text-align: center; padding: 52px 24px;
+      background: var(--card); border-radius: var(--radius);
+      border: 1px dashed var(--border); margin-bottom: 32px;
+      color: var(--muted);
+    }
+    .no-slots-icon { font-size: 2.6rem; margin-bottom: 14px; }
+
+    /* ── Auth Card ─────────────────────────────────────────── */
+    .auth-wrap { max-width: 430px; margin: 0 auto; }
+    .auth-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 34px;
+    }
+    .auth-card h2  { font-size: 1.45rem; margin-bottom: 5px; }
+    .auth-sub      { color: var(--muted); font-size: 0.88rem; margin-bottom: 28px; }
+    .form-group    { margin-bottom: 20px; }
+    .form-label    { display: block; font-size: 0.82rem; color: var(--muted); font-weight: 600; margin-bottom: 7px; letter-spacing: 0.02em; }
+    .form-input {
+      width: 100%; background: var(--bg);
+      border: 1px solid var(--border); border-radius: var(--radius-sm);
+      color: var(--text); padding: 12px 14px; font-size: 0.95rem;
+      transition: border-color var(--transition);
+    }
+    .form-input:focus { outline: none; border-color: var(--accent); }
+    .form-input.has-error { border-color: var(--error); }
+    .input-wrap    { position: relative; }
+    .pw-toggle {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      color: var(--muted); font-size: 0.88rem; padding: 4px; cursor: pointer;
+    }
+    .pw-toggle:hover { color: var(--text); }
+    .field-error   { color: var(--error); font-size: 0.77rem; margin-top: 5px; min-height: 16px; }
+    .demo-hint     { text-align: center; margin-top: 16px; font-size: 0.78rem; color: var(--muted); }
+
+    /* ── Spinner ───────────────────────────────────────────── */
+    .spinner {
+      display: inline-block; width: 15px; height: 15px;
+      border: 2px solid rgba(0,0,0,0.25); border-top-color: #000;
+      border-radius: 50%; animation: spin 0.55s linear infinite;
+      vertical-align: middle; margin-right: 7px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Error Banner ──────────────────────────────────────── */
+    .error-banner {
+      display: none; align-items: flex-start; gap: 10px;
+      background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.28);
+      border-radius: var(--radius-sm); padding: 14px 16px;
+      color: #fca5a5; font-size: 0.87rem; margin-bottom: 20px;
+    }
+    .error-banner.visible { display: flex; }
+    .error-banner .err-icon { flex-shrink: 0; font-size: 1rem; margin-top: 1px; }
+    .retry-lnk { margin-left: auto; flex-shrink: 0; color: var(--accent); cursor: pointer; text-decoration: underline; font-size: 0.8rem; }
+
+    /* ── Checkout Layout ───────────────────────────────────── */
+    @media (min-width: 768px) {
+      .checkout-layout { display: grid; grid-template-columns: 1fr 340px; gap: 28px; align-items: start; }
+    }
+
+    /* ── Package Cards ─────────────────────────────────────── */
+    .pkg-grid { display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; margin-bottom: 28px; }
+    @media (max-width: 580px) { .pkg-grid { grid-template-columns: 1fr; } }
+    .pkg-card {
+      background: var(--bg); border: 2px solid var(--border);
+      border-radius: var(--radius-sm); padding: 16px;
+      cursor: pointer; transition: all var(--transition); text-align: left;
+    }
+    .pkg-card:hover    { border-color: rgba(223,255,0,0.4); }
+    .pkg-card.selected { border-color: var(--accent); background: rgba(223,255,0,0.06); }
+    .pkg-name  { font-weight: 700; font-size: 0.9rem; margin-bottom: 4px; }
+    .pkg-price { color: var(--accent); font-size: 1.1rem; font-weight: 800; }
+    .pkg-per   { color: var(--muted); font-size: 0.73rem; margin-top: 2px; }
+
+    /* ── Payment Method Cards ──────────────────────────────── */
+    .pay-methods { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 28px; }
+    .pay-card {
+      flex: 1; min-width: 90px; background: var(--bg);
+      border: 2px solid var(--border); border-radius: var(--radius-sm);
+      padding: 14px 10px; cursor: pointer; text-align: center;
+      font-size: 0.82rem; font-weight: 600; transition: all var(--transition);
+    }
+    .pay-card:hover    { border-color: rgba(223,255,0,0.4); }
+    .pay-card.selected { border-color: var(--accent); background: rgba(223,255,0,0.07); color: var(--accent); }
+    .pay-icon { font-size: 1.5rem; margin-bottom: 5px; display: block; }
+
+    /* ── Order Summary Card ────────────────────────────────── */
+    .summary-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px; margin-bottom: 24px;
+    }
+    .summary-card h3 {
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.1em;
+      color: var(--muted); margin-bottom: 18px;
+    }
+    .summary-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 9px 0; font-size: 0.9rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .summary-row:last-child { border-bottom: none; }
+    .summary-row.total {
+      font-weight: 800; font-size: 1.05rem; color: var(--accent);
+      border-top: 1px solid var(--border); padding-top: 14px; margin-top: 4px;
+    }
+    .sum-label { color: var(--muted); }
+
+    /* ── Success Screen ────────────────────────────────────── */
+    .success-wrap { max-width: 540px; margin: 0 auto; text-align: center; }
+    .success-badge {
+      width: 84px; height: 84px;
+      background: rgba(34,197,94,0.12); border: 2px solid var(--success);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 2.4rem; margin: 0 auto 24px;
+      animation: popIn 380ms cubic-bezier(0.34,1.56,0.64,1);
+    }
+    @keyframes popIn { from { transform: scale(0.5); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .receipt-card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 26px; margin: 24px 0; text-align: left;
+    }
+    .receipt-id {
+      font-family: "Courier New", monospace; font-size: 0.95rem;
+      color: var(--accent); background: rgba(223,255,0,0.07);
+      padding: 8px 14px; border-radius: var(--radius-sm);
+      display: inline-block; margin-bottom: 18px; letter-spacing: 0.06em;
+    }
+    .info-row {
+      display: flex; justify-content: space-between; align-items: baseline;
+      padding: 9px 0; font-size: 0.88rem; border-bottom: 1px solid var(--border);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-label { color: var(--muted); }
+    .info-val   { font-weight: 600; text-align: right; max-width: 60%; word-break: break-word; }
+
+    /* ── WhatsApp Mock ─────────────────────────────────────── */
+    .wa-card {
+      background: #12231a; border: 1px solid rgba(34,197,94,0.22);
+      border-radius: var(--radius); padding: 18px; margin-top: 22px; text-align: left;
+    }
+    .wa-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .wa-dot    { width: 10px; height: 10px; background: var(--success); border-radius: 50%; flex-shrink: 0; }
+    .wa-label  { font-size: 0.87rem; font-weight: 700; color: var(--success); }
+    .wa-phone  { font-size: 0.73rem; color: #6ee7b7; }
+    .wa-bubble {
+      background: #25D366; color: #000;
+      font-size: 0.84rem; line-height: 1.55;
+      border-radius: 0 12px 12px 12px; padding: 12px 14px;
+    }
+    .wa-sent-time { font-size: 0.7rem; color: rgba(0,0,0,0.55); margin-top: 5px; text-align: right; }
+    .wa-delivered { font-size: 0.73rem; color: #6ee7b7; margin-top: 8px; }
+
+    /* ── Divider ───────────────────────────────────────────── */
+    .divider { height: 1px; background: var(--border); margin: 28px 0; }
+  </style>
+</head>
+<body>
+
+<!-- ARIA live region for screen-reader announcements -->
+<div id="a11y-live" aria-live="polite" aria-atomic="true"></div>
+
+<div id="app">
+
+  <!-- ── HEADER ──────────────────────────────────────────── -->
+  <header class="app-header">
+    <div class="logo">
+      <div class="logo-icon">PB</div>
+      <div>
+        <span class="logo-name">Pickleball SG</span>
+        <span class="logo-sub">by SportyGo</span>
+      </div>
+    </div>
+    <button class="back-btn" id="back-btn" onclick="goBack()">&#8592; Back</button>
+  </header>
+
+  <!-- ════════════════════════════════════════════════════════
+       SCREEN 1 — HOME
+  ════════════════════════════════════════════════════════ -->
+  <div id="screen-home" class="screen active">
+
+    <div class="hero">
+      <div class="hero-eyebrow">Pickleball Singapore</div>
+      <div class="hero-title">Play More.<br>Book Smarter.</div>
+      <div class="hero-desc">Reserve a court by the hour or book a certified coach — in seconds.</div>
+    </div>
+
+    <div class="steps">
+      <div class="step active"></div>
+      <div class="step"></div><div class="step"></div>
+      <div class="step"></div><div class="step"></div>
+    </div>
+
+    <div class="section-title">Choose Booking Type</div>
+    <div class="section-sub">What are you booking today?</div>
+
+    <div class="tile-grid">
+      <div class="tile" id="tile-court" role="button" tabindex="0"
+           aria-pressed="false"
+           onclick="selectBookingType('court')"
+           onkeydown="keyTile(event,'court')">
+        <div class="tile-icon">🎾</div>
+        <div class="tile-title">Court Rental</div>
+        <div class="tile-desc">Grab a court for 60, 90, or 120 minutes. Bring your own paddles or rent from us.</div>
+        <span class="tile-badge">From SGD 28 / hr</span>
+      </div>
+      <div class="tile" id="tile-coaching" role="button" tabindex="0"
+           aria-pressed="false"
+           onclick="selectBookingType('coaching')"
+           onkeydown="keyTile(event,'coaching')">
+        <div class="tile-icon">🏆</div>
+        <div class="tile-title">Coaching Session</div>
+        <div class="tile-desc">Train with a certified coach. Flexible multi-session packages available.</div>
+        <span class="tile-badge">From SGD 88 / pack</span>
+      </div>
+    </div>
+
+    <button class="btn-primary" id="home-cta" disabled onclick="navigate('schedule')">
+      Select Date &amp; Time →
+    </button>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       SCREEN 2 — SCHEDULE
+  ════════════════════════════════════════════════════════ -->
+  <div id="screen-schedule" class="screen">
+
+    <div class="steps">
+      <div class="step done"></div>
+      <div class="step active"></div>
+      <div class="step"></div><div class="step"></div><div class="step"></div>
+    </div>
+
+    <div class="section-title">Choose Date &amp; Time</div>
+    <div class="section-sub" id="schedule-sub">Select when you'd like to play.</div>
+
+    <!-- Duration (court only) -->
+    <div id="duration-section">
+      <div class="slot-label">Session Duration</div>
+      <div class="pill-row" id="duration-pills"></div>
+    </div>
+
+    <!-- Date strip -->
+    <div class="slot-label">Select Date</div>
+    <div class="date-strip-wrap">
+      <div class="date-strip" id="date-strip"></div>
+    </div>
+
+    <!-- Time slots -->
+    <div class="slot-label">Available Times</div>
+    <div id="slot-container"></div>
+
+    <button class="btn-primary" id="schedule-cta" disabled onclick="guardedCheckout()">
+      Continue to Checkout →
+    </button>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       SCREEN 3 — LOGIN
+  ════════════════════════════════════════════════════════ -->
+  <div id="screen-login" class="screen">
+
+    <div class="steps">
+      <div class="step done"></div>
+      <div class="step done"></div>
+      <div class="step active"></div>
+      <div class="step"></div><div class="step"></div>
+    </div>
+
+    <div class="auth-wrap">
+      <div class="auth-card">
+        <h2>Sign In</h2>
+        <p class="auth-sub">Sign in to confirm your booking securely.</p>
+
+        <div class="error-banner" id="login-err-banner">
+          <span class="err-icon">⚠️</span>
+          <span id="login-err-text">Invalid credentials. Please try again.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="inp-email">Email Address</label>
+          <input type="email" id="inp-email" class="form-input"
+                 placeholder="you@example.com" autocomplete="email"
+                 oninput="validateLogin()" />
+          <div class="field-error" id="err-email"></div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="inp-pw">Password</label>
+          <div class="input-wrap">
+            <input type="password" id="inp-pw" class="form-input"
+                   placeholder="Minimum 8 characters" autocomplete="current-password"
+                   oninput="validateLogin()" />
+            <button class="pw-toggle" type="button" id="pw-toggle" onclick="togglePw()" aria-label="Show password">👁</button>
+          </div>
+          <div class="field-error" id="err-pw"></div>
+        </div>
+
+        <button class="btn-primary" id="login-btn" disabled onclick="doLogin()">
+          Sign In
+        </button>
+
+        <p class="demo-hint">Demo: any valid email + 8+ char password</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       SCREEN 4 — CHECKOUT
+  ════════════════════════════════════════════════════════ -->
+  <div id="screen-checkout" class="screen">
+
+    <div class="steps">
+      <div class="step done"></div>
+      <div class="step done"></div>
+      <div class="step done"></div>
+      <div class="step active"></div>
+      <div class="step"></div>
+    </div>
+
+    <div class="section-title">Checkout</div>
+    <div class="section-sub">Review your booking and complete payment.</div>
+
+    <div class="error-banner" id="checkout-err-banner">
+      <span class="err-icon">⚠️</span>
+      <span id="checkout-err-text">Payment failed. Please try again.</span>
+      <span class="retry-lnk" onclick="clearCheckoutErr()" tabindex="0"
+            onkeydown="if(event.key==='Enter')clearCheckoutErr()">Dismiss</span>
+    </div>
+
+    <div class="checkout-layout">
+
+      <!-- Left column -->
+      <div>
+        <!-- Coaching package picker (coaching only) -->
+        <div id="pkg-section" style="display:none">
+          <div class="slot-label" style="margin-bottom:10px;">Choose Package</div>
+          <div class="pkg-grid" id="pkg-grid"></div>
+          <div class="divider"></div>
+        </div>
+
+        <!-- Payment method -->
+        <div class="slot-label" style="margin-bottom:12px;">Payment Method</div>
+        <div class="pay-methods" id="pay-methods">
+          <div class="pay-card" id="pay-STRIPE" role="button" tabindex="0"
+               onclick="selectPay('STRIPE')" onkeydown="keyPay(event,'STRIPE')">
+            <span class="pay-icon">💳</span>Stripe
+          </div>
+          <div class="pay-card" id="pay-PAYNOW" role="button" tabindex="0"
+               onclick="selectPay('PAYNOW')" onkeydown="keyPay(event,'PAYNOW')">
+            <span class="pay-icon">📱</span>PayNow
+          </div>
+          <div class="pay-card" id="pay-GRABPAY" role="button" tabindex="0"
+               onclick="selectPay('GRABPAY')" onkeydown="keyPay(event,'GRABPAY')">
+            <span class="pay-icon">🟢</span>GrabPay
+          </div>
+        </div>
+
+        <button class="btn-primary" id="pay-btn" disabled onclick="doPayment()">
+          Select payment method
+        </button>
+      </div>
+
+      <!-- Right column — order summary -->
+      <div>
+        <div class="summary-card">
+          <h3>Order Summary</h3>
+          <div id="summary-rows"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ════════════════════════════════════════════════════════
+       SCREEN 5 — SUCCESS
+  ════════════════════════════════════════════════════════ -->
+  <div id="screen-success" class="screen">
+
+    <div class="steps">
+      <div class="step done"></div><div class="step done"></div>
+      <div class="step done"></div><div class="step done"></div>
+      <div class="step done"></div>
+    </div>
+
+    <div class="success-wrap">
+      <div class="success-badge">✓</div>
+      <div class="section-title">Booking Confirmed!</div>
+      <div class="section-sub">Your slot is reserved. A confirmation has been sent to your email.</div>
+
+      <div class="receipt-card">
+        <div class="receipt-id" id="receipt-id-display"></div>
+        <div id="receipt-rows"></div>
+      </div>
+
+      <!-- WhatsApp mock notification -->
+      <div class="wa-card">
+        <div class="wa-header">
+          <div class="wa-dot"></div>
+          <div>
+            <div class="wa-label">WhatsApp Confirmation</div>
+            <div class="wa-phone" id="wa-phone"></div>
+          </div>
+        </div>
+        <div class="wa-bubble" id="wa-bubble"></div>
+        <div class="wa-sent-time" id="wa-sent-time"></div>
+        <div class="wa-delivered">✓✓ Delivered</div>
+      </div>
+
+      <button class="btn-primary" style="margin-top:32px;" onclick="resetApp()">
+        Book Another Session
+      </button>
+    </div>
+  </div>
+
+</div><!-- /#app -->
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════════
+// CONSTANTS
+// ═══════════════════════════════════════════════════
+const COURT_RATE   = 28;
+const PLATFORM_FEE = 1.50;
+const TAX_RATE     = 0.09;
+
+const DURATIONS = [
+  { label: '60 mins', value: 60  },
+  { label: '90 mins', value: 90  },
+  { label: '120 mins', value: 120 },
+];
+
+const PACKAGES = [
+  { id: 'single',  label: 'Single Session',  price: 120, per: 'SGD 120.00 / session' },
+  { id: 'pack3',   label: '3-Session Pack',  price: 88,  per: 'SGD 29.33 / session'  },
+  { id: 'pack10',  label: '10-Session Pack', price: 250, per: 'SGD 25.00 / session'  },
+  { id: 'pack15',  label: '15-Session Pack', price: 350, per: 'SGD 23.33 / session'  },
+  { id: 'pack20',  label: '20-Session Pack', price: 450, per: 'SGD 22.50 / session'  },
+];
+
+const PAY_OPTS = ['STRIPE', 'PAYNOW', 'GRABPAY'];
+const ALL_SCREENS = ['home', 'schedule', 'login', 'checkout', 'success'];
+const LS_SLOTS_KEY = 'pkl_sg_booked_slots_v1';
+
+// ═══════════════════════════════════════════════════
+// CENTRAL STATE
+// ═══════════════════════════════════════════════════
+const state = {
+  screen:           'home',
+  bookingType:      null,   // 'court' | 'coaching'
+  selectedDate:     null,   // 'YYYY-MM-DD'
+  selectedTime:     null,   // 'HH:MM'
+  durationMins:     60,
+  packageOption:    null,   // package id
+  isLoggedIn:       false,
+  customerEmail:    '',
+  payMethod:        null,   // 'STRIPE' | 'PAYNOW' | 'GRABPAY'
+  bookedSlots:      {},     // { 'YYYY-MM-DD_HH:MM': true }
+  priceSubtotal:    0,
+  platformFee:      PLATFORM_FEE,
+  tax:              0,
+  grandTotal:       0,
+  receiptId:        '',
+  whatsAppMockSent: false,
+};
+
+// ═══════════════════════════════════════════════════
+// LOCAL STORAGE
+// ═══════════════════════════════════════════════════
+function loadSlots() {
+  try {
+    const raw = localStorage.getItem(LS_SLOTS_KEY);
+    if (raw) state.bookedSlots = JSON.parse(raw);
+  } catch (_) {}
+}
+
+function saveSlots() {
+  try { localStorage.setItem(LS_SLOTS_KEY, JSON.stringify(state.bookedSlots)); } catch (_) {}
+}
+
+// ═══════════════════════════════════════════════════
+// DATE & SLOT ENGINE
+// ═══════════════════════════════════════════════════
+function rollingDates() {
+  const today = new Date();
+  const dates = [];
+  for (let i = 0; i < 14; i++) {
+    const d = new Date(today);
+    d.setDate(today.getDate() + i);
+    dates.push(d);
+  }
+  return dates;
+}
+
+function toISO(d) { return d.toISOString().slice(0, 10); }
+
+function getSlotsForDate(dateStr) {
+  const slots = [];
+  for (let h = 8; h < 22; h++) {
+    for (let m = 0; m < 60; m += 30) {
+      const time = `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}`;
+      const key  = `${dateStr}_${time}`;
+      // Seed ~25% booked if not already stored
+      if (!(key in state.bookedSlots)) {
+        state.bookedSlots[key] = Math.random() < 0.25;
+      }
+      slots.push({ time, key, booked: state.bookedSlots[key] });
+    }
+  }
+  return slots;
+}
+
+// ═══════════════════════════════════════════════════
+// PRICING
+// ═══════════════════════════════════════════════════
+function calcPricing() {
+  if (state.bookingType === 'court') {
+    state.priceSubtotal = parseFloat((COURT_RATE * (state.durationMins / 60)).toFixed(2));
+  } else {
+    const pkg = PACKAGES.find(p => p.id === state.packageOption);
+    state.priceSubtotal = pkg ? pkg.price : 0;
+  }
+  state.tax          = parseFloat((state.priceSubtotal * TAX_RATE).toFixed(2));
+  state.platformFee  = PLATFORM_FEE;
+  state.grandTotal   = parseFloat((state.priceSubtotal + state.tax + state.platformFee).toFixed(2));
+}
+
+function sgd(n) { return `SGD ${Number(n).toFixed(2)}`; }
+
+// ═══════════════════════════════════════════════════
+// RECEIPT
+// ═══════════════════════════════════════════════════
+function makeReceiptId() {
+  const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+  let id = 'SG-';
+  for (let i = 0; i < 10; i++) id += chars[Math.floor(Math.random() * chars.length)];
+  return id;
+}
+
+// ═══════════════════════════════════════════════════
+// ARIA LIVE ANNOUNCER
+// ═══════════════════════════════════════════════════
+function announce(msg) {
+  const el = document.getElementById('a11y-live');
+  el.textContent = '';
+  requestAnimationFrame(() => { el.textContent = msg; });
+}
+
+// ═══════════════════════════════════════════════════
+// ROUTER
+// ═══════════════════════════════════════════════════
+function showScreen(name) {
+  ALL_SCREENS.forEach(s => document.getElementById(`screen-${s}`).classList.remove('active'));
+  document.getElementById(`screen-${name}`).classList.add('active');
+  state.screen = name;
+  const backBtn = document.getElementById('back-btn');
+  backBtn.classList.toggle('visible', name !== 'home' && name !== 'success');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function navigate(target) {
+  // Guard: no booking type → stay on home
+  if (target === 'schedule' && !state.bookingType) return;
+  // Guard: success only via payment
+  if (target === 'success') return;
+  // Guard: checkout requires login
+  if (target === 'checkout' && !state.isLoggedIn) { target = 'login'; }
+
+  showScreen(target);
+  renderScreen(target);
+  announce(`Navigated to ${target}`);
+}
+
+function guardedCheckout() {
+  // From schedule: ensure date + time selected
+  if (!state.selectedDate || !state.selectedTime) return;
+  if (state.isLoggedIn) {
+    navigate('checkout');
+  } else {
+    navigate('login');
+  }
+}
+
+function goBack() {
+  const order = ['home', 'schedule', 'login', 'checkout'];
+  const idx   = order.indexOf(state.screen);
+  if (idx <= 0) return;
+  let prev = order[idx - 1];
+  // Skip login when already authenticated
+  if (prev === 'login' && state.isLoggedIn) prev = order[idx - 2] || 'home';
+  showScreen(prev);
+  renderScreen(prev);
+}
+
+// ═══════════════════════════════════════════════════
+// RENDER DISPATCHER
+// ═══════════════════════════════════════════════════
+function renderScreen(name) {
+  if (name === 'home')     renderHome();
+  if (name === 'schedule') renderSchedule();
+  if (name === 'checkout') renderCheckout();
+  if (name === 'success')  renderSuccess();
+}
+
+// ═══════════════════════════════════════════════════
+// SCREEN 1 — HOME
+// ═══════════════════════════════════════════════════
+function renderHome() {
+  ['court', 'coaching'].forEach(t => {
+    const el = document.getElementById(`tile-${t}`);
+    el.classList.toggle('selected', state.bookingType === t);
+    el.setAttribute('aria-pressed', state.bookingType === t);
+  });
+  document.getElementById('home-cta').disabled = !state.bookingType;
+}
+
+function selectBookingType(type) {
+  state.bookingType = type;
+  if (type === 'coaching') { state.durationMins = 60; state.packageOption = null; }
+  renderHome();
+  announce(`${type === 'court' ? 'Court Rental' : 'Coaching Session'} selected`);
+}
+
+function keyTile(e, type) {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectBookingType(type); }
+}
+
+// ═══════════════════════════════════════════════════
+// SCREEN 2 — SCHEDULE
+// ═══════════════════════════════════════════════════
+function renderSchedule() {
+  document.getElementById('schedule-sub').textContent =
+    state.bookingType === 'coaching'
+      ? 'Pick your date and time for the coaching session (60 min fixed).'
+      : 'Pick your date, duration, and preferred time.';
+
+  // Duration pills — court only
+  const durSec = document.getElementById('duration-section');
+  durSec.style.display = state.bookingType === 'coaching' ? 'none' : 'block';
+  const pillsEl = document.getElementById('duration-pills');
+  pillsEl.innerHTML = '';
+  DURATIONS.forEach(d => {
+    const btn = document.createElement('button');
+    btn.className = 'pill' + (state.durationMins === d.value ? ' selected' : '');
+    btn.textContent = d.label;
+    btn.setAttribute('aria-pressed', state.durationMins === d.value);
+    btn.onclick = () => {
+      state.durationMins = d.value;
+      renderSchedule();
+      announce(`Duration set to ${d.label}`);
+    };
+    pillsEl.appendChild(btn);
+  });
+
+  // Date strip
+  const strip = document.getElementById('date-strip');
+  strip.innerHTML = '';
+  const dates = rollingDates();
+  dates.forEach((d, i) => {
+    const ds   = toISO(d);
+    const card = document.createElement('div');
+    const sel  = ds === state.selectedDate;
+    card.className = 'date-card' + (sel ? ' selected' : '') + (i === 0 ? ' today' : '');
+    card.setAttribute('role', 'button');
+    card.setAttribute('tabindex', '0');
+    card.setAttribute('aria-pressed', sel);
+    card.innerHTML = `
+      <div class="day-name">${d.toLocaleDateString('en-SG',{weekday:'short'})}</div>
+      <div class="day-num">${d.getDate()}</div>
+      <div class="month-lbl">${d.toLocaleDateString('en-SG',{month:'short'})}</div>
+    `;
+    card.onclick = () => {
+      state.selectedDate = ds;
+      state.selectedTime = null;
+      renderSchedule();
+      announce(`Date selected: ${d.toLocaleDateString('en-SG',{weekday:'long',day:'numeric',month:'long'})}`);
+    };
+    card.onkeydown = e => { if (e.key==='Enter'||e.key===' '){e.preventDefault();card.click();} };
+    strip.appendChild(card);
+  });
+
+  // Slot container
+  const container = document.getElementById('slot-container');
+  container.innerHTML = '';
+
+  if (!state.selectedDate) {
+    container.innerHTML = `
+      <div class="no-slots">
+        <div class="no-slots-icon">📅</div>
+        <div>Select a date above to see available times.</div>
+      </div>`;
+    document.getElementById('schedule-cta').disabled = true;
+    return;
+  }
+
+  const slots     = getSlotsForDate(state.selectedDate);
+  const available = slots.filter(s => !s.booked);
+
+  if (available.length === 0) {
+    container.innerHTML = `
+      <div class="no-slots">
+        <div class="no-slots-icon">😔</div>
+        <div>No available slots on this date. Please try another day.</div>
+      </div>`;
+    document.getElementById('schedule-cta').disabled = true;
+    return;
+  }
+
+  const grid = document.createElement('div');
+  grid.className = 'slot-grid';
+  slots.forEach(s => {
+    const el = document.createElement('div');
+    const sel = !s.booked && state.selectedTime === s.time;
+    el.className = 'slot' + (s.booked ? ' booked' : '') + (sel ? ' selected' : '');
+    el.setAttribute('role', 'button');
+    el.setAttribute('tabindex', s.booked ? '-1' : '0');
+    el.setAttribute('aria-disabled', s.booked);
+    el.setAttribute('aria-pressed', sel);
+    el.innerHTML = `${s.time}<div class="slot-sub">${s.booked ? 'Booked' : 'Available'}</div>`;
+    if (!s.booked) {
+      el.onclick = () => {
+        state.selectedTime = s.time;
+        renderSchedule();
+        announce(`Time ${s.time} selected`);
+      };
+      el.onkeydown = e => { if (e.key==='Enter'||e.key===' '){e.preventDefault();el.click();} };
+    }
+    grid.appendChild(el);
+  });
+  container.appendChild(grid);
+  document.getElementById('schedule-cta').disabled = !state.selectedTime;
+}
+
+// ═══════════════════════════════════════════════════
+// SCREEN 4 — CHECKOUT
+// ═══════════════════════════════════════════════════
+function renderCheckout() {
+  calcPricing();
+
+  // Package picker (coaching only)
+  const pkgSec = document.getElementById('pkg-section');
+  pkgSec.style.display = state.bookingType === 'coaching' ? 'block' : 'none';
+  if (state.bookingType === 'coaching') {
+    const grid = document.getElementById('pkg-grid');
+    grid.innerHTML = '';
+    PACKAGES.forEach(pkg => {
+      const card = document.createElement('div');
+      const sel  = state.packageOption === pkg.id;
+      card.className = 'pkg-card' + (sel ? ' selected' : '');
+      card.setAttribute('role', 'button');
+      card.setAttribute('tabindex', '0');
+      card.setAttribute('aria-pressed', sel);
+      card.innerHTML = `
+        <div class="pkg-name">${pkg.label}</div>
+        <div class="pkg-price">${sgd(pkg.price)}</div>
+        <div class="pkg-per">${pkg.per}</div>
+      `;
+      card.onclick = () => {
+        state.packageOption = pkg.id;
+        renderCheckout();
+        announce(`Package: ${pkg.label}`);
+      };
+      card.onkeydown = e => { if(e.key==='Enter'||e.key===' '){e.preventDefault();card.click();} };
+      grid.appendChild(card);
+    });
+  }
+
+  // Payment method highlight
+  PAY_OPTS.forEach(m => {
+    const el = document.getElementById(`pay-${m}`);
+    el.classList.toggle('selected', state.payMethod === m);
+    el.setAttribute('aria-pressed', state.payMethod === m);
+  });
+
+  // Recalc after possible package change
+  calcPricing();
+
+  // Order summary
+  const dateLabel = state.selectedDate
+    ? new Date(state.selectedDate + 'T00:00:00').toLocaleDateString('en-SG',
+        {weekday:'short',day:'numeric',month:'short',year:'numeric'})
+    : '—';
+
+  const durationLabel = state.bookingType === 'court'
+    ? `${state.durationMins} mins`
+    : (state.packageOption
+        ? PACKAGES.find(p => p.id === state.packageOption)?.label
+        : 'No package selected');
+
+  document.getElementById('summary-rows').innerHTML = `
+    <div class="summary-row">
+      <span class="sum-label">Type</span>
+      <span>${state.bookingType === 'court' ? 'Court Rental' : 'Coaching Session'}</span>
+    </div>
+    <div class="summary-row">
+      <span class="sum-label">Date</span><span>${dateLabel}</span>
+    </div>
+    <div class="summary-row">
+      <span class="sum-label">Time</span><span>${state.selectedTime || '—'}</span>
+    </div>
+    <div class="summary-row">
+      <span class="sum-label">${state.bookingType === 'court' ? 'Duration' : 'Package'}</span>
+      <span>${durationLabel}</span>
+    </div>
+    <div class="summary-row">
+      <span class="sum-label">Subtotal</span><span>${sgd(state.priceSubtotal)}</span>
+    </div>
+    <div class="summary-row">
+      <span class="sum-label">Platform Fee</span><span>${sgd(state.platformFee)}</span>
+    </div>
+    <div class="summary-row">
+      <span class="sum-label">GST (9%)</span><span>${sgd(state.tax)}</span>
+    </div>
+    <div class="summary-row total">
+      <span>Total</span><span>${sgd(state.grandTotal)}</span>
+    </div>
+  `;
+
+  updatePayBtn();
+}
+
+function updatePayBtn() {
+  const coachingOk = state.bookingType === 'coaching' ? !!state.packageOption : true;
+  const canPay     = !!state.payMethod && coachingOk && state.grandTotal > 0;
+  const btn        = document.getElementById('pay-btn');
+  btn.disabled     = !canPay;
+  if (canPay) {
+    btn.textContent = `Pay ${sgd(state.grandTotal)} via ${state.payMethod}`;
+  } else if (state.bookingType === 'coaching' && !state.packageOption) {
+    btn.textContent = 'Select a package to continue';
+  } else {
+    btn.textContent = 'Select a payment method';
+  }
+}
+
+function selectPay(method) {
+  state.payMethod = method;
+  PAY_OPTS.forEach(m => {
+    const el = document.getElementById(`pay-${m}`);
+    el.classList.toggle('selected', m === method);
+    el.setAttribute('aria-pressed', m === method);
+  });
+  updatePayBtn();
+  announce(`Payment: ${method}`);
+}
+
+function keyPay(e, method) {
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectPay(method); }
+}
+
+function clearCheckoutErr() {
+  document.getElementById('checkout-err-banner').classList.remove('visible');
+}
+
+// ═══════════════════════════════════════════════════
+// SCREEN 5 — SUCCESS
+// ═══════════════════════════════════════════════════
+function renderSuccess() {
+  document.getElementById('receipt-id-display').textContent = state.receiptId;
+
+  const dateLong = state.selectedDate
+    ? new Date(state.selectedDate + 'T00:00:00').toLocaleDateString('en-SG',
+        {weekday:'long',day:'numeric',month:'long',year:'numeric'})
+    : '';
+
+  const durationLabel = state.bookingType === 'court'
+    ? `${state.durationMins} minutes`
+    : (PACKAGES.find(p => p.id === state.packageOption)?.label || '');
+
+  document.getElementById('receipt-rows').innerHTML = `
+    <div class="info-row">
+      <span class="info-label">Booking Type</span>
+      <span class="info-val">${state.bookingType === 'court' ? 'Court Rental' : 'Coaching Session'}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Date</span>
+      <span class="info-val">${dateLong}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Time</span>
+      <span class="info-val">${state.selectedTime}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">${state.bookingType === 'court' ? 'Duration' : 'Package'}</span>
+      <span class="info-val">${durationLabel}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Payment</span>
+      <span class="info-val">${state.payMethod}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Amount Paid</span>
+      <span class="info-val" style="color:var(--accent)">${sgd(state.grandTotal)}</span>
+    </div>
+    <div class="info-row">
+      <span class="info-label">Account</span>
+      <span class="info-val">${state.customerEmail}</span>
+    </div>
+  `;
+
+  // WhatsApp mock
+  const maskedPhone = '+65 9*** **42';
+  document.getElementById('wa-phone').textContent = maskedPhone;
+
+  const now       = new Date();
+  const timeStr   = now.toLocaleTimeString('en-SG', {hour:'2-digit', minute:'2-digit'});
+  document.getElementById('wa-sent-time').textContent = timeStr;
+
+  const typeStr = state.bookingType === 'court'
+    ? `Court Rental — ${state.durationMins} mins`
+    : `Coaching — ${PACKAGES.find(p => p.id === state.packageOption)?.label}`;
+
+  document.getElementById('wa-bubble').innerHTML = [
+    '✅ <strong>Booking Confirmed!</strong>',
+    '',
+    `Hi! Your Pickleball SG booking is locked in.`,
+    '',
+    `📅 ${dateLong}`,
+    `⏰ ${state.selectedTime}`,
+    `🎾 ${typeStr}`,
+    `💳 ${sgd(state.grandTotal)} via ${state.payMethod}`,
+    `🧾 ${state.receiptId}`,
+    '',
+    'See you on the court! 🏓',
+  ].join('<br>');
+
+  state.whatsAppMockSent = true;
+}
+
+// ═══════════════════════════════════════════════════
+// LOGIN SIMULATION
+// ═══════════════════════════════════════════════════
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function validateLogin() {
+  const email = document.getElementById('inp-email').value.trim();
+  const pw    = document.getElementById('inp-pw').value;
+  const eInp  = document.getElementById('inp-email');
+  const pInp  = document.getElementById('inp-pw');
+  const eErr  = document.getElementById('err-email');
+  const pErr  = document.getElementById('err-pw');
+  let valid   = true;
+
+  if (!email) {
+    eErr.textContent = 'Email is required.';
+    eInp.classList.add('has-error'); valid = false;
+  } else if (!EMAIL_RE.test(email)) {
+    eErr.textContent = 'Enter a valid email address.';
+    eInp.classList.add('has-error'); valid = false;
+  } else {
+    eErr.textContent = ''; eInp.classList.remove('has-error');
+  }
+
+  if (!pw) {
+    pErr.textContent = 'Password is required.';
+    pInp.classList.add('has-error'); valid = false;
+  } else if (pw.length < 8) {
+    pErr.textContent = 'Password must be at least 8 characters.';
+    pInp.classList.add('has-error'); valid = false;
+  } else {
+    pErr.textContent = ''; pInp.classList.remove('has-error');
+  }
+
+  document.getElementById('login-btn').disabled = !valid;
+  return valid;
+}
+
+function togglePw() {
+  const inp = document.getElementById('inp-pw');
+  const btn = document.getElementById('pw-toggle');
+  if (inp.type === 'password') {
+    inp.type = 'text'; btn.textContent = '🙈';
+    btn.setAttribute('aria-label', 'Hide password');
+  } else {
+    inp.type = 'password'; btn.textContent = '👁';
+    btn.setAttribute('aria-label', 'Show password');
+  }
+}
+
+function doLogin() {
+  if (!validateLogin()) return;
+  const btn       = document.getElementById('login-btn');
+  const errBanner = document.getElementById('login-err-banner');
+  errBanner.classList.remove('visible');
+  btn.disabled    = true;
+  btn.innerHTML   = '<span class="spinner"></span>Signing in…';
+
+  const delay = 600 + Math.random() * 400;
+  setTimeout(() => {
+    state.isLoggedIn    = true;
+    state.customerEmail = document.getElementById('inp-email').value.trim();
+    btn.innerHTML       = 'Sign In';
+    announce('Login successful. Redirecting to checkout.');
+    showScreen('checkout');
+    renderCheckout();
+  }, delay);
+}
+
+// ═══════════════════════════════════════════════════
+// PAYMENT SIMULATION
+// ═══════════════════════════════════════════════════
+function doPayment() {
+  const btn = document.getElementById('pay-btn');
+  document.getElementById('checkout-err-banner').classList.remove('visible');
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span>Processing payment…';
+
+  const delay = 1000 + Math.random() * 500;
+  setTimeout(() => {
+    const success = Math.random() < 0.9; // 90% pass rate
+
+    if (success) {
+      // Mark slot booked and persist
+      const key = `${state.selectedDate}_${state.selectedTime}`;
+      state.bookedSlots[key] = true;
+      saveSlots();
+
+      state.receiptId        = makeReceiptId();
+      state.whatsAppMockSent = false;
+
+      showScreen('success');
+      renderSuccess();
+      announce('Payment successful! Booking confirmed.');
+    } else {
+      // Failure path — stay on checkout, show retry
+      btn.disabled  = false;
+      updatePayBtn();
+      const banner  = document.getElementById('checkout-err-banner');
+      document.getElementById('checkout-err-text').textContent =
+        'Payment could not be processed. Please check your details and try again.';
+      banner.classList.add('visible');
+      announce('Payment failed. Please try again.');
+    }
+  }, delay);
+}
+
+// ═══════════════════════════════════════════════════
+// RESET
+// ═══════════════════════════════════════════════════
+function resetApp() {
+  // Preserve login session for convenience
+  state.screen        = 'home';
+  state.bookingType   = null;
+  state.selectedDate  = null;
+  state.selectedTime  = null;
+  state.durationMins  = 60;
+  state.packageOption = null;
+  state.payMethod     = null;
+  state.priceSubtotal = 0;
+  state.tax           = 0;
+  state.grandTotal    = 0;
+  state.receiptId     = '';
+  state.whatsAppMockSent = false;
+
+  // Pre-fill email if logged in
+  const emailInp = document.getElementById('inp-email');
+  if (emailInp) emailInp.value = state.customerEmail;
+  const pwInp = document.getElementById('inp-pw');
+  if (pwInp) pwInp.value = '';
+  document.getElementById('err-email').textContent = '';
+  document.getElementById('err-pw').textContent    = '';
+  document.getElementById('inp-email').classList.remove('has-error');
+  document.getElementById('inp-pw').classList.remove('has-error');
+  document.getElementById('login-btn').disabled = true;
+  document.getElementById('login-err-banner').classList.remove('visible');
+
+  showScreen('home');
+  renderHome();
+  announce('Booking reset. Ready to start again.');
+}
+
+// ═══════════════════════════════════════════════════
+// BOOTSTRAP
+// ═══════════════════════════════════════════════════
+(function init() {
+  loadSlots();
+  renderHome();
+})();
+</script>
+</body>
+</html>
