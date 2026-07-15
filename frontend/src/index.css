@@ -53,6 +53,74 @@ input { font-family: inherit; }
 
 /* ── App Shell ─────────────────────────────────────────────── */
 .app-shell { max-width: 920px; margin: 0 auto; padding: 0 20px 64px; min-height: 100vh; }
+.app-shell.home-mode {
+  max-width: none;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+}
+
+/* ── Home Splash Screen ───────────────────────────────────── */
+.home-splash {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 18px;
+}
+.home-splash-frame {
+  position: relative;
+  width: min(100%, 430px);
+  border-radius: 24px;
+  overflow: hidden;
+  border: 1px solid rgba(223, 255, 0, 0.18);
+  box-shadow: 0 28px 60px rgba(0, 0, 0, 0.5);
+  background: #020a1a;
+}
+.home-splash-image {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: cover;
+}
+.home-hotspot {
+  position: absolute;
+  left: 9%;
+  width: 82%;
+  border-radius: 20px;
+  border: 0;
+  background: transparent;
+}
+.home-hotspot-start {
+  top: 80.7%;
+  height: 6.6%;
+}
+.home-hotspot-login {
+  top: 88.5%;
+  height: 6.3%;
+}
+.home-hotspot:focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: -3px;
+}
+@media (max-width: 480px) {
+  .home-splash {
+    padding: 0;
+  }
+  .home-splash-frame {
+    width: 100%;
+    min-height: 100vh;
+    border: none;
+    border-radius: 0;
+  }
+  .home-splash-image {
+    min-height: 100vh;
+    object-fit: cover;
+  }
+}
 
 /* ── Screen fade animation ─────────────────────────────────── */
 .screen-enter {

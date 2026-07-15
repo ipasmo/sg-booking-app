@@ -8,13 +8,14 @@ import SuccessScreen from '@/screens/SuccessScreen';
 
 export default function App() {
   const { state } = useApp();
+  const isHomeScreen = state.screen === 'home';
 
   return (
-    <div className="app-shell">
+    <div className={`app-shell${isHomeScreen ? ' home-mode' : ''}`}>
       {/* ARIA live region for screen-reader announcements */}
       <div id="a11y-live" className="a11y-live" aria-live="polite" aria-atomic="true" />
 
-      <Header />
+      {!isHomeScreen && <Header />}
 
       {state.screen === 'home'     && <HomeScreen />}
       {state.screen === 'schedule' && <ScheduleScreen />}

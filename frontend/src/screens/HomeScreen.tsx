@@ -1,76 +1,43 @@
 import { useApp, useSelectBookingType } from '@/context/AppContext';
 import { announce } from '@/lib/utils';
-import StepBar from '@/components/StepBar';
+import homeBackground from '@/assets/home_bk.jpeg';
 
 export default function HomeScreen() {
-  const { state, navigate } = useApp();
+  const { navigate } = useApp();
   const selectType = useSelectBookingType();
 
-  function handleSelect(type: 'court' | 'coaching') {
-    selectType(type);
-    announce(`${type === 'court' ? 'Court Rental' : 'Coaching Session'} selected`);
+  function handleGetStarted() {
+    // Keep existing booking flow intact by selecting a default type before scheduling.
+    selectType('court');
+    announce('Get Started selected. Court rental preselected.');
+    navigate('schedule');
+  }
+
+  function handleLogin() {
+    announce('Log in selected');
+    navigate('login');
   }
 
   return (
-    <div className="screen-enter">
-      <div className="hero">
-        <div className="hero-eyebrow">Pickleball Singapore</div>
-        <div className="hero-title">
-          Play More.<br />Book Smarter.
-        </div>
-        <div className="hero-desc">
-          Reserve a court by the hour or book a certified coach — in seconds.
-        </div>
+    <div className="home-splash screen-enter">
+      <div className="home-splash-frame" role="img" aria-label="SportyGo home background image">
+        <img src={homeBackground} alt="SportyGo Play Learn Grow home screen" className="home-splash-image" />
+
+        {/* Transparent hotspots keep the visual identical to the reference image. */}
+        <button
+          type="button"
+          className="home-hotspot home-hotspot-start"
+          aria-label="Get Started"
+          onClick={handleGetStarted}
+        />
+
+        <button
+          type="button"
+          className="home-hotspot home-hotspot-login"
+          aria-label="Log In"
+          onClick={handleLogin}
+        />
       </div>
-
-      <StepBar current={0} />
-
-      <div className="section-title">Choose Booking Type</div>
-      <div className="section-sub">What are you booking today?</div>
-
-      <div className="tile-grid">
-        {/* Court Rental tile */}
-        <div
-          className={`tile${state.bookingType === 'court' ? ' selected' : ''}`}
-          role="button"
-          tabIndex={0}
-          aria-pressed={state.bookingType === 'court'}
-          onClick={() => handleSelect('court')}
-          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelect('court'); } }}
-        >
-          <div className="tile-icon">🎾</div>
-          <div className="tile-title">Court Rental</div>
-          <div className="tile-desc">
-            Grab a court for 60, 90, or 120 minutes. Bring your own paddles or rent from us.
-          </div>
-          <span className="tile-badge">From SGD 28 / hr</span>
-        </div>
-
-        {/* Coaching Session tile */}
-        <div
-          className={`tile${state.bookingType === 'coaching' ? ' selected' : ''}`}
-          role="button"
-          tabIndex={0}
-          aria-pressed={state.bookingType === 'coaching'}
-          onClick={() => handleSelect('coaching')}
-          onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleSelect('coaching'); } }}
-        >
-          <div className="tile-icon">🏆</div>
-          <div className="tile-title">Coaching Session</div>
-          <div className="tile-desc">
-            Train with a certified coach. Flexible multi-session packages available.
-          </div>
-          <span className="tile-badge">From SGD 88 / pack</span>
-        </div>
-      </div>
-
-      <button
-        className="btn-primary"
-        disabled={!state.bookingType}
-        onClick={() => navigate('schedule')}
-      >
-        Select Date &amp; Time →
-      </button>
     </div>
   );
 }
