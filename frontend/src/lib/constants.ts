@@ -18,6 +18,6 @@ export const PACKAGES: Package[] = [
   { id: 'pack20',  label: '20-Session Pack', price: 450, per: 'SGD 22.50 / session'  },
 ];
 
-export const PAY_OPTS = ['STRIPE', 'PAYNOW', 'GRABPAY'] as const;
+export const PAY_OPTS = ['STRIPE', 'GPAY', 'PAYNOW', 'GRABPAY'] as const;
 
-export const ALL_SCREENS = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'login', 'checkout', 'success'] as const;
+export const ALL_SCREENS = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'terms', 'login', 'checkout', 'success'] as const;

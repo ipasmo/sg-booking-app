@@ -1,15 +1,19 @@
 import { useState } from 'react';
+import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
+import { FaApple, FaGoogle } from 'react-icons/fa';
 import { useApp } from '@/context/AppContext';
-import { loginUser } from '@/lib/api';
+import { loginUser, loginWithGoogle } from '@/lib/api';
+import { getGoogleCredential } from '@/lib/googleIdentity';
 import { announce } from '@/lib/utils';
-import StepBar from '@/components/StepBar';
 import ErrorBanner from '@/components/ErrorBanner';
 import Spinner from '@/components/Spinner';
+import logoImage from '@/assets/logo.png';
+import loginBackground from '@/assets/home_bk.png';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function LoginScreen() {
-  const { dispatch } = useApp();
+  const { dispatch, state } = useApp();
 
   const [email, setEmail]         = useState('');
   const [password, setPassword]   = useState('');
@@ -17,6 +21,7 @@ export default function LoginScreen() {
   const [emailErr, setEmailErr]   = useState('');
   const [pwErr, setPwErr]         = useState('');
   const [loading, setLoading]     = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [loginErr, setLoginErr]   = useState<string | null>(null);
 
   function validate(): boolean {
@@ -48,9 +53,11 @@ export default function LoginScreen() {
 
     try {
       const res = await loginUser(email, password);
+      const redirectScreen = state.postLoginRedirect ?? 'sport-select';
       dispatch({ type: 'SET_LOGGED_IN', payload: { email: res.email, token: res.token } });
-      dispatch({ type: 'SET_SCREEN', payload: 'checkout' });
-      announce('Login successful. Redirecting to checkout.');
+      dispatch({ type: 'SET_POST_LOGIN_REDIRECT', payload: null });
+      dispatch({ type: 'SET_SCREEN', payload: redirectScreen });
+      announce(`Login successful. Redirecting to ${redirectScreen === 'bookings' ? 'your bookings' : redirectScreen === 'checkout' ? 'checkout' : 'home'}.`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Login failed. Please try again.';
       setLoginErr(msg);
@@ -60,44 +67,76 @@ export default function LoginScreen() {
     }
   }
 
+  async function handleGoogleLogin() {
+    setLoginErr(null);
+    setGoogleLoading(true);
+
+    try {
+      const credential = await getGoogleCredential(import.meta.env.VITE_GOOGLE_CLIENT_ID ?? '');
+      const res = await loginWithGoogle(credential);
+      const redirectScreen = state.postLoginRedirect ?? 'sport-select';
+      dispatch({ type: 'SET_LOGGED_IN', payload: { email: res.email, token: res.token } });
+      dispatch({ type: 'SET_POST_LOGIN_REDIRECT', payload: null });
+      dispatch({ type: 'SET_SCREEN', payload: redirectScreen });
+      announce(`Google sign-in successful. Redirecting to ${redirectScreen === 'bookings' ? 'your bookings' : redirectScreen === 'checkout' ? 'checkout' : 'home'}.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Google sign-in failed. Please try again.';
+      setLoginErr(msg);
+      announce('Google sign-in failed.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  }
+
   const isFormValid = !!email && EMAIL_RE.test(email) && password.length >= 8;
 
   return (
-    <div className="screen-fade-enter">
-      <StepBar current={2} />
+    <div className="page-container page-container--immersive screen-fade-enter">
+      <div className="login-phone" style={{ backgroundImage: `url(${loginBackground})` }}>
+        <div className="sport-events-logo-wrap login-logo-wrap">
+          <img src={logoImage} alt="SportyGo" className="sport-events-logo" />
+        </div>
 
-      <div className="auth-wrap">
-        <div className="auth-card">
-          <h2>Sign In</h2>
-          <p className="auth-sub">Sign in to confirm your booking securely.</p>
+        <section className="login-hero">
+          <h1>
+            <span>Welcome</span>
+            <strong>Back!</strong>
+          </h1>
+          <p>
+            Log in to continue your sports journey with <em>SportyGo.</em>
+          </p>
+        </section>
 
+        <section className="login-card">
           <ErrorBanner message={loginErr} onDismiss={() => setLoginErr(null)} />
 
-          {/* Email */}
-          <div className="form-group">
-            <label className="form-label" htmlFor="inp-email">Email Address</label>
-            <input
-              id="inp-email"
-              type="email"
-              className={`form-input${emailErr ? ' has-error' : ''}`}
-              placeholder="you@example.com"
-              autoComplete="email"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
-              onBlur={validate}
-            />
-            <div className="field-error">{emailErr}</div>
+          <div className="login-field">
+            <label className="login-label" htmlFor="inp-email">Email Address</label>
+            <div className={`login-input-wrap${emailErr ? ' has-error' : ''}`}>
+              <Mail size={20} strokeWidth={2} className="login-input-icon" aria-hidden="true" />
+              <input
+                id="inp-email"
+                type="email"
+                className="login-input"
+                placeholder="Enter your email"
+                autoComplete="email"
+                value={email}
+                onChange={e => setEmail(e.target.value)}
+                onBlur={validate}
+              />
+            </div>
+            <div className="login-field-error">{emailErr}</div>
           </div>
 
-          {/* Password */}
-          <div className="form-group">
-            <label className="form-label" htmlFor="inp-pw">Password</label>
-            <div className="input-wrap">
+          <div className="login-field">
+            <label className="login-label" htmlFor="inp-pw">Password</label>
+            <div className={`login-input-wrap${pwErr ? ' has-error' : ''}`}>
+              <Lock size={20} strokeWidth={2} className="login-input-icon" aria-hidden="true" />
               <input
                 id="inp-pw"
                 type={showPw ? 'text' : 'password'}
-                className={`form-input${pwErr ? ' has-error' : ''}`}
-                placeholder="Minimum 8 characters"
+                className="login-input"
+                placeholder="Enter your password"
                 autoComplete="current-password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
@@ -105,26 +144,52 @@ export default function LoginScreen() {
               />
               <button
                 type="button"
-                className="pw-toggle"
+                className="login-show-toggle"
                 aria-label={showPw ? 'Hide password' : 'Show password'}
                 onClick={() => setShowPw(v => !v)}
               >
-                {showPw ? '🙈' : '👁'}
+                {showPw ? <EyeOff size={20} strokeWidth={2} /> : <Eye size={20} strokeWidth={2} />}
               </button>
             </div>
-            <div className="field-error">{pwErr}</div>
+            <div className="login-field-error">{pwErr}</div>
           </div>
 
+          <button type="button" className="login-forgot-btn">Forgot Password?</button>
+
           <button
-            className="btn-primary"
+            className="login-submit-btn"
             disabled={!isFormValid || loading}
             onClick={handleLogin}
           >
             {loading && <Spinner />}
-            {loading ? 'Signing in…' : 'Sign In'}
+            <span>{loading ? 'Logging In...' : 'Log In'}</span>
+            {!loading && <ArrowRight size={20} strokeWidth={2.3} />}
           </button>
 
-          <p className="demo-hint">Demo: any valid email + 8+ char password</p>
+          <div className="login-divider" aria-hidden="true">
+            <span />
+            <strong>OR</strong>
+            <span />
+          </div>
+
+          <div className="login-social-title">Continue with</div>
+          <div className="login-social-row">
+            <button type="button" className="login-social-btn" onClick={handleGoogleLogin} disabled={googleLoading}>
+              <FaGoogle />
+              <span>{googleLoading ? 'Connecting...' : 'Google'}</span>
+            </button>
+            <button type="button" className="login-social-btn">
+              <FaApple />
+              <span>Apple</span>
+            </button>
+          </div>
+        </section>
+
+        <div className="login-signup-note">
+          <span>Don't have an account?</span>
+          <button type="button" className="login-signup-btn">
+            Create Account <ArrowRight size={16} strokeWidth={2.4} />
+          </button>
         </div>
       </div>
     </div>

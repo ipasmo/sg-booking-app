@@ -5,16 +5,19 @@ import SportSelectScreen from '@/screens/SportSelectScreen';
 import SportEventsScreen from '@/screens/SportEventsScreen';
 import SportFacilityScreen from '@/screens/SportFacilityScreen';
 import ScheduleScreen from '@/screens/ScheduleScreen';
+import TermsScreen from '@/screens/TermsScreen';
 import LoginScreen from '@/screens/LoginScreen';
 import CheckoutScreen from '@/screens/CheckoutScreen';
 import SuccessScreen from '@/screens/SuccessScreen';
+import BookingsScreen from '@/screens/BookingsScreen';
 
 export default function App() {
   const { state } = useApp();
-  const isImmersiveScreen = state.screen === 'home' || state.screen === 'sport-select' || state.screen === 'sport-events' || state.screen === 'facility-select';
+  const isImmersiveScreen = state.screen === 'home' || state.screen === 'sport-select' || state.screen === 'sport-events' || state.screen === 'facility-select' || state.screen === 'schedule' || state.screen === 'terms' || state.screen === 'login' || state.screen === 'checkout' || state.screen === 'success' || state.screen === 'bookings';
+  const topAlignedImmersive = state.screen === 'schedule' || state.screen === 'terms' || state.screen === 'checkout' || state.screen === 'success' || state.screen === 'bookings';
 
   return (
-    <div className={`app-shell${isImmersiveScreen ? ' home-mode' : ''}`}>
+    <div className={`app-shell${isImmersiveScreen ? ' home-mode' : ''}${topAlignedImmersive ? ' immersive-top' : ''}`}>
       {/* ARIA live region for screen-reader announcements */}
       <div id="a11y-live" className="a11y-live" aria-live="polite" aria-atomic="true" />
 
@@ -25,9 +28,11 @@ export default function App() {
       {state.screen === 'sport-events' && <SportEventsScreen />}
       {state.screen === 'facility-select' && <SportFacilityScreen />}
       {state.screen === 'schedule' && <ScheduleScreen />}
+      {state.screen === 'terms' && <TermsScreen />}
       {state.screen === 'login'    && <LoginScreen />}
       {state.screen === 'checkout' && <CheckoutScreen />}
       {state.screen === 'success'  && <SuccessScreen />}
+      {state.screen === 'bookings' && <BookingsScreen />}
     </div>
   );
 }

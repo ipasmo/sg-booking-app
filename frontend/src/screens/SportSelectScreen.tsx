@@ -1,8 +1,9 @@
-import { ChevronLeft, ChevronRight, ShieldCheck } from 'lucide-react';
+import { ChevronRight, ShieldCheck } from 'lucide-react';
 import { useApp, useSelectBookingType } from '@/context/AppContext';
 import { announce } from '@/lib/utils';
+import ScreenHeader from '@/components/ScreenHeader';
+import SportsBottomNav from '@/components/SportsBottomNav';
 import selectSportBackground from '@/assets/select_sport_bk.png';
-import logoImage from '@/assets/logo.png';
 import cricketCard from '@/assets/card_cricket.png';
 import indoorCricketCard from '@/assets/card_indoor_cricket.png';
 import pickleballCard from '@/assets/card_pickle_ball.png';
@@ -76,23 +77,10 @@ export default function SportSelectScreen() {
   return (
     <div className="page-container page-container--immersive screen-fade-enter">
       <div
-        className="sport-select-phone"
+        className="sports-screen-shell"
         style={{ backgroundImage: `url(${selectSportBackground})` }}
       >
-        <div className="sport-top-nav">
-          <button
-            type="button"
-            className="sport-back-btn"
-            aria-label="Back to home"
-            onClick={() => navigate('home')}
-          >
-            <ChevronLeft size={18} strokeWidth={2.8} />
-          </button>
-        </div>
-
-        <div className="sport-events-logo-wrap">
-          <img src={logoImage} alt="SportyGo" className="sport-events-logo" />
-        </div>
+        <ScreenHeader onBack={() => navigate('home')} backAriaLabel="Back to home" />
 
         <div className="sport-steps" aria-hidden="true">
           <span className="sport-step active" />
@@ -133,6 +121,8 @@ export default function SportSelectScreen() {
           </span>
           <ChevronRight size={18} strokeWidth={2.4} className="sport-info-arrow" aria-hidden="true" />
         </button>
+
+        <SportsBottomNav onNavigate={navigate} activeItem="home" />
 
       </div>
     </div>

@@ -1,17 +1,15 @@
 import {
   ArrowRight,
   CalendarDays,
-  ChevronLeft,
   GraduationCap,
-  House,
-  MessageCircle,
   ShoppingBag,
   User,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { announce } from '@/lib/utils';
-import sportEventsBackground from '@/assets/sport_events_bk.png';
-import logoImage from '@/assets/logo.png';
+import ScreenHeader from '@/components/ScreenHeader';
+import SportsBottomNav from '@/components/SportsBottomNav';
+import sportEventsBackground from '@/assets/select_sport_bk.png';
 import cricketBanner from '@/assets/cricket_banner.png';
 import cricketCard from '@/assets/card_cricket.png';
 import indoorCricketCard from '@/assets/card_indoor_cricket.png';
@@ -106,24 +104,10 @@ export default function SportEventsScreen() {
   return (
     <div className="page-container page-container--immersive screen-fade-enter">
       <div
-        className="sport-events-phone"
+        className="sports-screen-shell"
         style={{ backgroundImage: `url(${sportEventsBackground})` }}
       >
-
-        <div className="sport-events-topbar">
-          <button
-            type="button"
-            className="sport-events-back"
-            aria-label="Back to sport list"
-            onClick={() => navigate('sport-select')}
-          >
-            <ChevronLeft size={21} strokeWidth={2.8} />
-          </button>
-        </div>
-
-        <div className="sport-events-logo-wrap">
-          <img src={logoImage} alt="SportyGo" className="sport-events-logo" />
-        </div>
+        <ScreenHeader onBack={() => navigate('sport-select')} backAriaLabel="Back to sport list" />
 
         <section className="sport-events-hero">
           <div className="sport-events-hero-left" aria-hidden="true">
@@ -150,41 +134,27 @@ export default function SportEventsScreen() {
               aria-label={card.title}
               onClick={() => handleCardAction(card.id, card.title)}
             >
-              <img src={card.image} alt={card.title} className="sport-event-card-image" />
-              <div className="sport-event-card-meta">
-                <span className="sport-event-card-icon" aria-hidden="true">
+              <div className="sport-event-card-media">
+                <img src={card.image} alt={card.title} className="sport-event-card-image" />
+                <span className="sport-event-card-badge" aria-hidden="true">
                   <FeatureIcon kind={card.icon} />
                 </span>
-                <span className="sport-event-card-title">{card.title}</span>
               </div>
-              <p className="sport-event-card-desc">{card.description}</p>
-              <ArrowRight size={24} strokeWidth={2.5} className="sport-event-card-arrow" aria-hidden="true" />
+
+              <div className="sport-event-card-body">
+                <div className="sport-event-card-title">{card.title}</div>
+                <div className="sport-event-card-desc">{card.description}</div>
+              </div>
+
+              <div className="sport-event-card-footer">
+                <span>Explore</span>
+                <ArrowRight size={22} strokeWidth={2.6} className="sport-event-card-arrow" aria-hidden="true" />
+              </div>
             </button>
           ))}
         </div>
 
-        <nav className="sport-events-bottom-nav" aria-label="Bottom navigation">
-          <button type="button" className="sport-events-nav-item active" onClick={() => navigate('home')}>
-            <House size={23} strokeWidth={2.1} />
-            <span>Home</span>
-          </button>
-          <button type="button" className="sport-events-nav-item" onClick={() => navigate('schedule')}>
-            <CalendarDays size={23} strokeWidth={2.1} />
-            <span>Bookings</span>
-          </button>
-          <button type="button" className="sport-events-nav-item" onClick={() => navigate('schedule')}>
-            <GraduationCap size={23} strokeWidth={2.1} />
-            <span>Academy</span>
-          </button>
-          <button type="button" className="sport-events-nav-item" onClick={() => navigate('schedule')}>
-            <MessageCircle size={23} strokeWidth={2.1} />
-            <span>Messages</span>
-          </button>
-          <button type="button" className="sport-events-nav-item" onClick={() => navigate('login')}>
-            <User size={23} strokeWidth={2.1} />
-            <span>Profile</span>
-          </button>
-        </nav>
+        <SportsBottomNav onNavigate={navigate} activeItem="home" />
       </div>
     </div>
   );

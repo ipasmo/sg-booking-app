@@ -2,10 +2,11 @@
 // Shared application types
 // ─────────────────────────────────────────────────────────────
 
-export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'login' | 'checkout' | 'success';
+export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'terms' | 'login' | 'checkout' | 'success' | 'bookings';
 export type SportId = 'cricket' | 'indoor-cricket' | 'pickleball' | 'soccer' | 'volleyball' | 'badminton' | 'basketball' | 'kabaddi';
 export type BookingType = 'court' | 'coaching';
-export type PayMethod = 'STRIPE' | 'PAYNOW' | 'GRABPAY';
+export type PayMethod = 'STRIPE' | 'GPAY' | 'PAYNOW' | 'GRABPAY';
+export type PaymentStatus = 'success' | 'cash';
 
 export interface Duration {
   label: string;
@@ -45,8 +46,10 @@ export interface AppState {
   tax: number;
   grandTotal: number;
   receiptId: string;
+  paymentStatus: PaymentStatus | null;
   whatsAppMockSent: boolean;
   paymentError: string | null;
+  postLoginRedirect: Screen | null;
 }
 
 export type Action =
@@ -65,7 +68,9 @@ export type Action =
   | { type: 'CLEAR_SLOTS_ERROR' }
   | { type: 'SET_PRICING'; payload: { priceSubtotal: number; tax: number; platformFee: number; grandTotal: number } }
   | { type: 'SET_RECEIPT'; payload: string }
+  | { type: 'SET_PAYMENT_STATUS'; payload: PaymentStatus }
   | { type: 'SET_PAYMENT_ERROR'; payload: string | null }
+  | { type: 'SET_POST_LOGIN_REDIRECT'; payload: Screen | null }
   | { type: 'MARK_WHATSAPP_SENT' }
   | { type: 'RESET' };
 
@@ -92,5 +97,6 @@ export interface SlotsResponse {
 
 export interface BookingResponse {
   receiptId: string;
-  status: string;
+  status: PaymentStatus;
+  paymentMethod: 'ONLINE' | 'CASH';
 }

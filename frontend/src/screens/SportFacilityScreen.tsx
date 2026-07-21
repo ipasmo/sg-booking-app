@@ -1,8 +1,9 @@
-import { ArrowRight, CalendarDays, ChevronLeft, Clock3, MapPin, ShieldCheck, Star } from 'lucide-react';
+import { ArrowRight, CalendarDays, Clock3, MapPin, ShieldCheck, Star } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { announce } from '@/lib/utils';
-import sportEventsBackground from '@/assets/sport_events_bk.png';
-import logoImage from '@/assets/logo.png';
+import ScreenHeader from '@/components/ScreenHeader';
+import SportsBottomNav from '@/components/SportsBottomNav';
+import selectSportBackground from '@/assets/select_sport_bk.png';
 import cricketFacility from '@/assets/cricket_facility.png';
 import cricketGear from '@/assets/cricket_gear.png';
 import cricketCoach from '@/assets/cricket_coach.png';
@@ -108,23 +109,10 @@ export default function SportFacilityScreen() {
   return (
     <div className="page-container page-container--immersive screen-fade-enter">
       <div
-        className="facility-select-phone"
-        style={{ backgroundImage: `linear-gradient(180deg, rgba(1, 14, 30, 0.86) 0%, rgba(1, 14, 30, 0.94) 56%, rgba(1, 14, 30, 0.98) 100%), url(${sportEventsBackground})` }}
+        className="sports-screen-shell"
+        style={{ backgroundImage: `url(${selectSportBackground})` }}
       >
-        <div className="facility-select-topbar">
-          <button
-            type="button"
-            className="facility-select-back"
-            aria-label="Back to sport events"
-            onClick={() => navigate('sport-events')}
-          >
-            <ChevronLeft size={21} strokeWidth={2.8} />
-          </button>
-        </div>
-
-        <div className="sport-events-logo-wrap">
-          <img src={logoImage} alt="SportyGo" className="sport-events-logo" />
-        </div>
+        <ScreenHeader onBack={() => navigate('sport-events')} backAriaLabel="Back to sport events" />
 
         <section className="facility-select-hero">
           <h1>
@@ -180,6 +168,8 @@ export default function SportFacilityScreen() {
             <small>Select a facility to check availability and book.</small>
           </span>
         </div>
+
+        <SportsBottomNav onNavigate={navigate} activeItem="home" />
       </div>
     </div>
   );

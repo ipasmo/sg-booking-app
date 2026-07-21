@@ -27,15 +27,20 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  // Simulate payment processing: 90% success, 10% failure
-  if (Math.random() >= 0.9) {
-    res.status(402).json({ error: 'Payment could not be processed. Please try again.' });
-    return;
-  }
+  const paymentSuccessful = Math.random() < 0.9;
+  const bookingStatus = paymentSuccessful ? 'confirmed' : 'cash_pending';
+  const paymentMethod = paymentSuccessful ? 'ONLINE' : 'CASH';
 
-  // Persist to Supabase when configured
+  // Persist to Supabase when configured.
+  // Business rule: block slot first, then process payment outcome.
   if (isSupabaseConfigured()) {
     try {
+      await supabase.from('slots').upsert({
+        slot_date: selectedDate,
+        slot_time: selectedTime,
+        is_booked: true,
+      }, { onConflict: 'slot_date,slot_time' });
+
       await supabase.from('bookings').insert({
         booking_type:   bookingType,
         slot_date:      selectedDate,
@@ -46,20 +51,18 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
         grand_total:    grandTotal,
         receipt_id:     receiptId,
         customer_email: customerEmail,
-        status:         'confirmed',
+        status:         bookingStatus,
       });
-
-      await supabase.from('slots').upsert({
-        slot_date: selectedDate,
-        slot_time: selectedTime,
-        is_booked: true,
-      }, { onConflict: 'slot_date,slot_time' });
     } catch {
-      // Log error but still return success to avoid blocking Phase 1 demos
+      // Do not block demo flow if DB write fails.
     }
   }
 
-  res.json({ receiptId, status: 'confirmed' });
+  res.json({
+    receiptId,
+    status: paymentSuccessful ? 'success' : 'cash',
+    paymentMethod,
+  });
 });
 
 export default router;
