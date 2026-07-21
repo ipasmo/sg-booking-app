@@ -29,7 +29,7 @@ export default function SuccessScreen() {
   }
 
   return (
-    <div className="screen-enter">
+    <div className="screen-fade-enter">
       <StepBar current={4} />
 
       <div className="success-wrap">

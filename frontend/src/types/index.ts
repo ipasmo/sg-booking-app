@@ -2,7 +2,8 @@
 // Shared application types
 // ─────────────────────────────────────────────────────────────
 
-export type Screen = 'home' | 'schedule' | 'login' | 'checkout' | 'success';
+export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'login' | 'checkout' | 'success';
+export type SportId = 'cricket' | 'indoor-cricket' | 'pickleball' | 'soccer' | 'volleyball' | 'badminton' | 'basketball' | 'kabaddi';
 export type BookingType = 'court' | 'coaching';
 export type PayMethod = 'STRIPE' | 'PAYNOW' | 'GRABPAY';
 
@@ -30,6 +31,7 @@ export interface AppState {
   selectedDate: string | null;     // ISO date: 'YYYY-MM-DD'
   selectedTime: string | null;     // 'HH:MM'
   durationMins: number;
+  selectedSport: SportId | null;
   packageOption: string | null;
   isLoggedIn: boolean;
   customerEmail: string;
@@ -50,6 +52,7 @@ export interface AppState {
 export type Action =
   | { type: 'SET_SCREEN'; payload: Screen }
   | { type: 'SET_BOOKING_TYPE'; payload: BookingType }
+  | { type: 'SET_SELECTED_SPORT'; payload: SportId }
   | { type: 'SET_DATE'; payload: string }
   | { type: 'SET_TIME'; payload: string }
   | { type: 'SET_DURATION'; payload: number }

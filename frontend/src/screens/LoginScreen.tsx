@@ -63,7 +63,7 @@ export default function LoginScreen() {
   const isFormValid = !!email && EMAIL_RE.test(email) && password.length >= 8;
 
   return (
-    <div className="screen-enter">
+    <div className="screen-fade-enter">
       <StepBar current={2} />
 
       <div className="auth-wrap">

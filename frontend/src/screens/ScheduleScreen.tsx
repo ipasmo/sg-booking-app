@@ -71,7 +71,7 @@ export default function ScheduleScreen() {
   }, []);
 
   return (
-    <div className="screen-enter">
+    <div className="screen-fade-enter">
       <StepBar current={1} />
 
       <div className="section-title">Choose Date &amp; Time</div>

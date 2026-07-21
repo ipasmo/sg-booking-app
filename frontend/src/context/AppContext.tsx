@@ -18,6 +18,7 @@ const initialState: AppState = {
   selectedDate:     null,
   selectedTime:     null,
   durationMins:     60,
+  selectedSport:    null,
   packageOption:    null,
   isLoggedIn:       false,
   customerEmail:    '',
@@ -53,6 +54,9 @@ function reducer(state: AppState, action: Action): AppState {
         packageOption: isCoaching ? null : state.packageOption,
       };
     }
+
+    case 'SET_SELECTED_SPORT':
+      return { ...state, selectedSport: action.payload };
 
     case 'SET_DATE':
       return { ...state, selectedDate: action.payload, selectedTime: null, slots: [], slotsError: null };
@@ -154,7 +158,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const goBack = useCallback(() => {
-    const order: Screen[] = ['home', 'schedule', 'login', 'checkout', 'success'];
+    const order: Screen[] = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'login', 'checkout', 'success'];
     const idx = order.indexOf(state.screen);
     if (idx <= 0) return;
 

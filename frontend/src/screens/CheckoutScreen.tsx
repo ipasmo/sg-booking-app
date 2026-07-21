@@ -79,7 +79,7 @@ export default function CheckoutScreen() {
     : `${state.durationMins} mins`;
 
   return (
-    <div className="screen-enter">
+    <div className="screen-fade-enter">
       <StepBar current={3} />
 
       <div className="section-title">Checkout</div>
