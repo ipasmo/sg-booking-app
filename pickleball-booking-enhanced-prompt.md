@@ -164,8 +164,8 @@ Use only when feature complexity grows:
 ### 4.4 Docker Deployment (Local and Production)
 Local Docker:
 1. Use Nginx Alpine image for static app delivery.
-2. Build image: `docker build -t pickleball-sg-app .`
-3. Run container: `docker run -d -p 8080:80 --name pickleball-sg pickleball-sg-app`
+2. Build image: `docker build -t sg-booking-app .`
+3. Run container: `docker run -d -p 8080:80 --name sg-booking-app sg-booking-app`
 4. Validate app at http://localhost:8080
 
 Production Docker options:

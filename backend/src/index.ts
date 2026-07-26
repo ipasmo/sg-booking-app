@@ -7,6 +7,8 @@ import authRoutes     from './routes/auth';
 import slotsRoutes    from './routes/slots';
 import bookingsRoutes from './routes/bookings';
 import packagesRoutes from './routes/packages';
+import devRoutes      from './routes/dev';
+import { isDatabaseConfigured } from './lib/database';
 
 dotenv.config();
 
@@ -27,10 +29,17 @@ app.use('/api/auth',     authRoutes);
 app.use('/api/slots',    slotsRoutes);
 app.use('/api/bookings', bookingsRoutes);
 app.use('/api/packages', packagesRoutes);
+app.use('/api/dev',      devRoutes);
 
 // ── Health check ──────────────────────────────────────────────
 app.get('/api/health', (_req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    database: {
+      configured: isDatabaseConfigured(),
+    },
+  });
 });
 
 // ── 404 handler ───────────────────────────────────────────────

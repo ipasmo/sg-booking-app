@@ -100,3 +100,18 @@ export interface BookingResponse {
   status: PaymentStatus;
   paymentMethod: 'ONLINE' | 'CASH';
 }
+
+export interface BookingHistoryItem {
+  receiptId: string;
+  bookingType: BookingType;
+  slotDate: string;
+  slotTime: string;
+  durationMins: number;
+  grandTotal: number;
+  status: 'confirmed' | 'cash_pending';
+  paymentMethod: 'ONLINE' | 'CASH';
+}
+
+export interface BookingHistoryResponse {
+  bookings: BookingHistoryItem[];
+}

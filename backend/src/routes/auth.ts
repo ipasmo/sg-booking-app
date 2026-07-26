@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
+import { upsertUserByEmail } from '../lib/database';
 
 const router = Router();
 
@@ -9,7 +10,7 @@ const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-in-production';
 const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? '';
 const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID || undefined);
 
-router.post('/login', (req, res) => {
+router.post('/login', async (req, res) => {
   const { email, password } = req.body as { email?: string; password?: string };
 
   if (!email || !EMAIL_RE.test(email)) {
@@ -22,7 +23,8 @@ router.post('/login', (req, res) => {
     return;
   }
 
-  // Phase 1: Accept any valid email + 8+ char password (no user DB needed)
+  await upsertUserByEmail(email, 'password');
+
   const token = jwt.sign({ email }, JWT_SECRET, { expiresIn: '24h' });
   res.json({ token, email });
 });
@@ -53,6 +55,8 @@ router.post('/google', async (req, res) => {
       res.status(400).json({ error: 'Unable to verify Google account email.' });
       return;
     }
+
+    await upsertUserByEmail(email, 'google');
 
     const token = jwt.sign({ email, provider: 'google' }, JWT_SECRET, { expiresIn: '24h' });
     res.json({ token, email });

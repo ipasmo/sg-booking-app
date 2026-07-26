@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays,
   Clock3,
@@ -11,13 +11,17 @@ import {
   User,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
+import { fetchMyBookings } from '@/lib/api';
 import { announce } from '@/lib/utils';
 import ScreenHeader from '@/components/ScreenHeader';
+import ErrorBanner from '@/components/ErrorBanner';
+import Spinner from '@/components/Spinner';
 import pageBackground from '@/assets/select_sport_bk.png';
 import indoorCricketCard from '@/assets/card_indoor_cricket.png';
 import cricketFacilityImage from '@/assets/cricket_facility.png';
 import cricketCard from '@/assets/card_cricket.png';
 import cricketGear from '@/assets/cricket_gear.png';
+import type { BookingHistoryItem } from '@/types';
 
 type BookingTab = 'upcoming' | 'previous';
 
@@ -33,6 +37,47 @@ type BookingCard = {
   tags: [string, string];
   image: string;
 };
+
+function to12Hour(time: string): string {
+  const [h, m] = time.split(':').map(Number);
+  const isPm = h >= 12;
+  const hour12 = h % 12 === 0 ? 12 : h % 12;
+  return `${String(hour12).padStart(2, '0')}:${String(m).padStart(2, '0')} ${isPm ? 'PM' : 'AM'}`;
+}
+
+function addMinutes(time: string, minutes: number): string {
+  const [h, m] = time.split(':').map(Number);
+  const total = (h * 60 + m + minutes) % (24 * 60);
+  const nextH = Math.floor(total / 60);
+  const nextM = total % 60;
+  return `${String(nextH).padStart(2, '0')}:${String(nextM).padStart(2, '0')}`;
+}
+
+function formatDateForCard(date: string): string {
+  return new Date(`${date}T00:00:00`).toLocaleDateString('en-SG', {
+    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
+  });
+}
+
+function mapHistoryToCard(item: BookingHistoryItem): BookingCard {
+  const isCoaching = item.bookingType === 'coaching';
+  const start = item.slotTime.slice(0, 5);
+  const end = addMinutes(start, item.durationMins);
+  const statusLabel = item.status === 'confirmed' ? 'Upcoming' : 'Pending Cash';
+
+  return {
+    id: item.receiptId,
+    title: isCoaching ? 'Coaching Session' : 'Cricket Net 2',
+    location: 'Kallang, Singapore',
+    dateText: formatDateForCard(item.slotDate),
+    timeText: `${to12Hour(start)} - ${to12Hour(end)} (${item.durationMins} min)`,
+    amount: `S$${item.grandTotal.toFixed(2)}`,
+    statusLabel,
+    statusType: 'upcoming',
+    tags: isCoaching ? ['Coaching', 'Package'] : ['Indoor', 'Net Lane'],
+    image: isCoaching ? cricketGear : indoorCricketCard,
+  };
+}
 
 const UPCOMING_BOOKINGS: BookingCard[] = [
   {
@@ -146,10 +191,44 @@ function BookingCardView({ booking, showActions }: { booking: BookingCard; showA
 }
 
 export default function BookingsScreen() {
-  const { navigate } = useApp();
+  const { navigate, state } = useApp();
   const [tab, setTab] = useState<BookingTab>('upcoming');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [historyCards, setHistoryCards] = useState<BookingCard[]>([]);
 
-  const activeList = useMemo(() => (tab === 'upcoming' ? UPCOMING_BOOKINGS : PREVIOUS_BOOKINGS), [tab]);
+  useEffect(() => {
+    if (!state.authToken) return;
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+
+    fetchMyBookings(state.authToken)
+      .then((response) => {
+        if (cancelled) return;
+        setHistoryCards(response.bookings.map(mapHistoryToCard));
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : 'Unable to load bookings right now.';
+        setError(msg);
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [state.authToken]);
+
+  const activeList = useMemo(() => {
+    if (historyCards.length > 0) {
+      return tab === 'upcoming' ? historyCards : [];
+    }
+    return tab === 'upcoming' ? UPCOMING_BOOKINGS : PREVIOUS_BOOKINGS;
+  }, [historyCards, tab]);
 
   return (
     <div className="page-container page-container--immersive screen-fade-enter">
@@ -168,6 +247,8 @@ export default function BookingsScreen() {
           <h1>My Bookings</h1>
           <p>Manage your facility bookings</p>
         </section>
+
+        <ErrorBanner message={error} onDismiss={() => setError(null)} />
 
         <section className="bookings-tabs-v2" aria-label="Bookings filter tabs">
           <button
@@ -195,11 +276,17 @@ export default function BookingsScreen() {
             <span>{activeList.length}</span>
           </header>
 
-          <div className="bookings-list-v2">
-            {activeList.map((booking) => (
-              <BookingCardView key={booking.id} booking={booking} showActions={tab === 'upcoming'} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="bookings-list-v2">
+              <Spinner />
+            </div>
+          ) : (
+            <div className="bookings-list-v2">
+              {activeList.map((booking) => (
+                <BookingCardView key={booking.id} booking={booking} showActions={tab === 'upcoming'} />
+              ))}
+            </div>
+          )}
         </section>
 
         <section className="bookings-help-v2">

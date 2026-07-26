@@ -1,4 +1,4 @@
-import type { BookingPayload, BookingResponse, LoginResponse, SlotsResponse } from '@/types';
+import type { BookingHistoryResponse, BookingPayload, BookingResponse, LoginResponse, SlotsResponse } from '@/types';
 import { markLocalBooked, mergeWithLocalBooked } from './localBookedSlots';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? '';
@@ -119,6 +119,20 @@ export async function createBooking(
         status: 'cash',
         paymentMethod: 'CASH',
       };
+    }
+    throw error;
+  }
+}
+
+export async function fetchMyBookings(token: string): Promise<BookingHistoryResponse> {
+  try {
+    return await request<BookingHistoryResponse>('/api/bookings', {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+    });
+  } catch (error) {
+    if (isNetworkError(error)) {
+      return { bookings: [] };
     }
     throw error;
   }
