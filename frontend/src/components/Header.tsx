@@ -9,7 +9,7 @@ export default function Header() {
       <div className="logo">
         <div className="logo-icon">PB</div>
         <div>
-          <span className="logo-name">Pickleball SG</span>
+          <span className="logo-name">SportyGo Booking App</span>
           <span className="logo-sub">by SportyGo</span>
         </div>
       </div>

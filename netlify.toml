@@ -1,8 +1,14 @@
 # Netlify configuration for React + Vite frontend
+# Import settings when connecting this repo in Netlify:
+# - Branch: use the branch that contains the frontend you want to publish
+# - Base directory: frontend
+# - Build command: npm ci && npm run build
+# - Publish directory: dist
+# - Functions directory: leave blank (this repo does not use Netlify Functions)
 
 [build]
   base    = "frontend"
-  command = "npm run build"
+  command = "npm ci && npm run build"
   publish = "dist"
 
 [[redirects]]
