@@ -16,6 +16,7 @@ import { announce } from '@/lib/utils';
 import ScreenHeader from '@/components/ScreenHeader';
 import ErrorBanner from '@/components/ErrorBanner';
 import Spinner from '@/components/Spinner';
+import { formatDateShort } from '@/lib/utils';
 import pageBackground from '@/assets/select_sport_bk.png';
 import indoorCricketCard from '@/assets/card_indoor_cricket.png';
 import cricketFacilityImage from '@/assets/cricket_facility.png';
@@ -54,9 +55,7 @@ function addMinutes(time: string, minutes: number): string {
 }
 
 function formatDateForCard(date: string): string {
-  return new Date(`${date}T00:00:00`).toLocaleDateString('en-SG', {
-    weekday: 'short', day: '2-digit', month: 'short', year: 'numeric',
-  });
+  return formatDateShort(date);
 }
 
 function mapHistoryToCard(item: BookingHistoryItem): BookingCard {

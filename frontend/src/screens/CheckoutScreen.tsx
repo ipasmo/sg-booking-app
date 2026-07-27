@@ -11,6 +11,10 @@ import Spinner from '@/components/Spinner';
 import logoImage from '@/assets/logo.png';
 import pageBackground from '@/assets/select_sport_bk.png';
 import indoorCricketCard from '@/assets/card_indoor_cricket.png';
+import bowlingLaneCard from '@/assets/bowling_lane.png';
+import cricketNetsCard from '@/assets/cricket_nets.png';
+import indoorCourtCard from '@/assets/indoor_court.png';
+import cricketFacility from '@/assets/cricket_facility.png';
 
 const SPORT_LABELS = {
   cricket: 'Cricket',
@@ -21,6 +25,15 @@ const SPORT_LABELS = {
   badminton: 'Badminton',
   basketball: 'Basketball',
   kabaddi: 'Kabaddi',
+} as const;
+
+const FACILITY_IMAGES = {
+  'bowling-lane': bowlingLaneCard,
+  'nets-2': cricketNetsCard,
+  'nets-3': cricketNetsCard,
+  'nets-4': cricketNetsCard,
+  'indoor-court': indoorCourtCard,
+  'outdoor-field': cricketFacility,
 } as const;
 
 const PAY_METHODS: Array<{ id: PayMethod; title: string; subtitle: string; badge: string }> = [
@@ -66,6 +79,9 @@ export default function CheckoutScreen() {
   const canPay = !!state.payMethod && coachingReady && pricing.grandTotal > 0 && !paying;
 
   const selectedSportLabel = state.selectedSport ? SPORT_LABELS[state.selectedSport] : 'Cricket';
+  const selectedFacilityTitle = state.selectedFacility?.title ?? `${selectedSportLabel} Facility`;
+  const selectedFacilityAddress = state.selectedFacility?.address ?? 'Location not available';
+  const selectedFacilityImage = state.selectedFacility ? FACILITY_IMAGES[state.selectedFacility.imageKey] : indoorCricketCard;
   const selectedDateText = state.selectedDate
     ? formatDateShort(state.selectedDate)
     : '—';
@@ -111,11 +127,11 @@ export default function CheckoutScreen() {
         state.authToken
       );
 
-      // Persist derived pricing to state so SuccessScreen receipt shows correct amount
+      // Persist derived pricing to state so BookingConfirmationScreen receipt shows correct amount
       dispatch({ type: 'SET_PRICING', payload: pricing });
       dispatch({ type: 'SET_RECEIPT', payload: receiptId });
       dispatch({ type: 'SET_PAYMENT_STATUS', payload: result.status });
-      navigate('success');
+      navigate('booking-confirmation');
       if (result.status === 'success') {
         announce('Payment successful! Booking confirmed.');
       } else {
@@ -131,6 +147,8 @@ export default function CheckoutScreen() {
   }
 
   const selectedPackageLabel = PACKAGES.find(p => p.id === state.packageOption)?.label ?? 'No package selected';
+  const bookingTypeTag = isCoaching ? 'Coaching' : 'Court Booking';
+  const durationTag = `${state.durationMins} mins`;
 
   return (
     <div className="page-container page-container--immersive screen-fade-enter">
@@ -166,20 +184,48 @@ export default function CheckoutScreen() {
         <section className="checkout-summary-card-v2">
           <h2>Booking Summary</h2>
           <div className="checkout-summary-body-v2">
-            <img src={indoorCricketCard} alt="Facility preview" className="checkout-summary-image-v2" />
+            <img src={selectedFacilityImage} alt={selectedFacilityTitle} className="checkout-summary-image-v2" />
             <div className="checkout-summary-info-v2">
-              <h3>{selectedSportLabel} Net 2</h3>
-              <p><MapPin size={14} strokeWidth={2.1} />Kallang, Singapore</p>
-              <p><CalendarDays size={14} strokeWidth={2.1} />{selectedDateText}</p>
-              <p><Clock3 size={14} strokeWidth={2.1} />{timeRange}</p>
+              <h3>{selectedFacilityTitle}</h3>
+              <p>
+                {state.selectedFacility?.mapLocationUrl ? (
+                  <a
+                    className="checkout-summary-icon-pill-v2"
+                    href={state.selectedFacility.mapLocationUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Open map for ${selectedFacilityTitle}`}
+                  >
+                    <MapPin size={15} strokeWidth={2.3} />
+                  </a>
+                ) : (
+                  <span className="checkout-summary-icon-pill-v2" aria-hidden="true">
+                    <MapPin size={15} strokeWidth={2.3} />
+                  </span>
+                )}
+                {selectedFacilityAddress}
+              </p>
+              <p>
+                <span className="checkout-summary-icon-pill-v2" aria-hidden="true">
+                  <CalendarDays size={15} strokeWidth={2.3} />
+                </span>
+                {selectedDateText}
+              </p>
+              <p>
+                <span className="checkout-summary-icon-pill-v2" aria-hidden="true">
+                  <Clock3 size={15} strokeWidth={2.3} />
+                </span>
+                {timeRange}
+              </p>
+              <p>
+                <div className="checkout-summary-price-v2">
+                  <strong>{sgd(pricing.grandTotal).replace('SGD', 'S$')} <span>(Incl. taxes)</span></strong>
+                </div>
+              </p>
               <div className="checkout-summary-tags-v2">
-                <span>Indoor</span>
-                <span>Net Lane</span>
+                <span>{bookingTypeTag}</span>
+                <span>{durationTag}</span>
               </div>
-            </div>
-            <div className="checkout-summary-price-v2">
-              <strong>{sgd(pricing.grandTotal).replace('SGD', 'S$')}</strong>
-              <span>(Incl. taxes)</span>
             </div>
           </div>
         </section>

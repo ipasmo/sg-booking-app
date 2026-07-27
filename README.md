@@ -46,6 +46,8 @@ npm run db:seed
 npm run db:smoke:slot-lock
 ```
 
+If you need to wipe and repopulate all seed data, use `npm run db:reset:seed`.
+
 5. Start backend and frontend.
 
 ```bash
@@ -88,6 +90,9 @@ npm run db:seed
 Seed now creates:
 
 - package catalog rows
+- sports catalog rows for `GET /api/sports`
+- sport event cards for `GET /api/sports/:sportId/events`
+- sport facility cards for `GET /api/sports/:sportId/facilities`
 - slot rows for a rolling date window
 - demo bookings for `contact@ipasmo.com` so My Bookings can be tested immediately
 - demo user record for `contact@ipasmo.com`
@@ -131,6 +136,7 @@ sg-booking-app/
       lib/database.ts
       scripts/migrate.ts
       scripts/seed.ts
+      scripts/resetSeed.ts
   docker-compose.yml
   Dockerfile.backend
   Dockerfile.frontend
@@ -149,6 +155,9 @@ Base path: `/api`
 - `GET /bookings` - fetch current user booking history (auth required)
 - `POST /bookings` - create booking (auth required)
 - `GET /packages` - package list
+- `GET /sports` - sports list from PostgreSQL
+- `GET /sports/:sportId/events` - sport events list from PostgreSQL
+- `GET /sports/:sportId/facilities` - sport facility cards list from PostgreSQL
 
 Booking protection:
 
@@ -164,6 +173,7 @@ Auth persistence:
 Dev utility endpoint:
 
 - `POST /api/dev/reset-seed` resets `bookings`, `slots`, `users`, `packages` and reseeds data
+- `npm run db:reset:seed` truncates seedable tables and repopulates them from the backend seed scripts
 - disabled automatically when `NODE_ENV=production`
 - if `DEV_RESET_TOKEN` is set, send header `x-dev-reset-token: <token>`
 - optional payload: `{ "days": 45 }` to control seed window (default 30, max 180)

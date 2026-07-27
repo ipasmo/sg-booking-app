@@ -55,6 +55,8 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
+  const resolvedCustomerEmail = customerEmail as string;
+
   const paymentSuccessful = Math.random() < 0.9;
   const bookingStatus = paymentSuccessful ? 'confirmed' : 'cash_pending';
   const paymentMethod = paymentSuccessful ? 'ONLINE' : 'CASH';
@@ -69,7 +71,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
       payMethod,
       grandTotal,
       receiptId,
-      customerEmail,
+      customerEmail: resolvedCustomerEmail,
       bookingStatus,
       paymentMethod,
     });

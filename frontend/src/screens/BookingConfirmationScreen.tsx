@@ -1,11 +1,15 @@
 import { useEffect } from 'react';
-import { ArrowRight, CalendarDays, Check, Copy, Lock, MapPin, ShieldCheck, Trophy } from 'lucide-react';
+import { ArrowRight, CalendarDays, Check, Clock3, Copy, Lock, MapPin, ShieldCheck, Trophy } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { sgd } from '@/lib/pricing';
-import { announce, formatDateLong } from '@/lib/utils';
+import { announce, formatDateLong, formatSgtTime } from '@/lib/utils';
 import logoImage from '@/assets/logo.png';
 import pageBackground from '@/assets/select_sport_bk.png';
 import indoorCricketCard from '@/assets/card_indoor_cricket.png';
+import bowlingLaneCard from '@/assets/bowling_lane.png';
+import cricketNetsCard from '@/assets/cricket_nets.png';
+import indoorCourtCard from '@/assets/indoor_court.png';
+import cricketFacility from '@/assets/cricket_facility.png';
 
 const SPORT_LABELS = {
   cricket: 'Cricket',
@@ -16,6 +20,15 @@ const SPORT_LABELS = {
   badminton: 'Badminton',
   basketball: 'Basketball',
   kabaddi: 'Kabaddi',
+} as const;
+
+const FACILITY_IMAGES = {
+  'bowling-lane': bowlingLaneCard,
+  'nets-2': cricketNetsCard,
+  'nets-3': cricketNetsCard,
+  'nets-4': cricketNetsCard,
+  'indoor-court': indoorCourtCard,
+  'outdoor-field': cricketFacility,
 } as const;
 
 function to12Hour(time: string): string {
@@ -41,11 +54,16 @@ function paymentMethodLabel(method: string | null): string {
   return 'Cash Payment';
 }
 
-export default function SuccessScreen() {
+export default function BookingConfirmationScreen() {
   const { state, dispatch, navigate } = useApp();
 
   const selectedSportLabel = state.selectedSport ? SPORT_LABELS[state.selectedSport] : 'Cricket';
+  const selectedFacilityTitle = state.selectedFacility?.title ?? `${selectedSportLabel} Facility`;
+  const selectedFacilityAddress = state.selectedFacility?.address ?? 'Location not available';
+  const selectedFacilityImage = state.selectedFacility ? FACILITY_IMAGES[state.selectedFacility.imageKey] : indoorCricketCard;
   const dateLong      = state.selectedDate ? formatDateLong(state.selectedDate) : 'Not selected';
+  const bookingTypeTag = state.bookingType === 'coaching' ? 'Coaching' : 'Court Booking';
+  const durationTag = `${state.durationMins} mins`;
   const paymentStatus = state.paymentStatus ?? 'success';
   const isPaid = paymentStatus === 'success';
   const timeLabel = state.selectedTime
@@ -60,8 +78,7 @@ export default function SuccessScreen() {
     }
   }, [state.whatsAppMockSent, dispatch]);
 
-  const now         = new Date();
-  const sentTimeStr = now.toLocaleTimeString('en-SG', { hour: '2-digit', minute: '2-digit' });
+  const sentTimeStr = formatSgtTime(new Date());
 
   function handleReset() {
     dispatch({ type: 'RESET' });
@@ -134,13 +151,40 @@ export default function SuccessScreen() {
           </div>
 
           <div className="success-venue-v2">
-            <img src={indoorCricketCard} alt="Booked facility" />
+            <img src={selectedFacilityImage} alt={selectedFacilityTitle} />
             <div>
-              <h2>{selectedSportLabel} Net 2</h2>
-              <p><MapPin size={14} strokeWidth={2.1} />Kallang, Singapore</p>
-              <p><CalendarDays size={14} strokeWidth={2.1} />{dateLong}</p>
-              <p><Lock size={14} strokeWidth={2.1} />{timeLabel}</p>
-              <div className="success-tags-v2"><span>Indoor</span><span>Net Lane</span></div>
+              <h2>{selectedFacilityTitle}</h2>
+              <p>
+                {state.selectedFacility?.mapLocationUrl ? (
+                  <a
+                    className="success-venue-icon-pill-v2"
+                    href={state.selectedFacility.mapLocationUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Open map for ${selectedFacilityTitle}`}
+                  >
+                    <MapPin size={15} strokeWidth={2.3} />
+                  </a>
+                ) : (
+                  <span className="success-venue-icon-pill-v2" aria-hidden="true">
+                    <MapPin size={15} strokeWidth={2.3} />
+                  </span>
+                )}
+                {selectedFacilityAddress}
+              </p>
+              <p>
+                <span className="success-venue-icon-pill-v2" aria-hidden="true">
+                  <CalendarDays size={15} strokeWidth={2.3} />
+                </span>
+                {dateLong}
+              </p>
+              <p>
+                <span className="success-venue-icon-pill-v2" aria-hidden="true">
+                  <Clock3 size={15} strokeWidth={2.3} />
+                </span>
+                {timeLabel}
+              </p>
+              <div className="success-tags-v2"><span>{bookingTypeTag}</span><span>{durationTag}</span></div>
             </div>
           </div>
 

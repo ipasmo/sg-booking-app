@@ -199,6 +199,10 @@ Generate:
 
 Migration must be repeatable.
 
+Use `npm run db:reset:seed` from `backend/` when you need to truncate seedable tables and repopulate them in one step.
+
+Seeded catalog tables now include `sports` for the Choose Your Sport screen, `sport_events` for the Sport Events screen, and `sport_facilities` for the Sport Facility screen.
+
 ---
 
 # Backend Refactoring

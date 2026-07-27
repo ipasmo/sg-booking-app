@@ -2,7 +2,7 @@ import { useApp } from '@/context/AppContext';
 
 export default function Header() {
   const { state, goBack } = useApp();
-  const showBack = state.screen !== 'home' && state.screen !== 'success';
+  const showBack = state.screen !== 'home' && state.screen !== 'booking-confirmation';
 
   return (
     <header className="app-header">

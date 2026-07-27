@@ -100,6 +100,10 @@ Routes:
   - `POST /api/bookings` (auth required)
 - `backend/src/routes/packages.ts`
   - `GET /api/packages`
+- `backend/src/routes/sports.ts`
+  - `GET /api/sports`
+  - `GET /api/sports/:sportId/events`
+  - `GET /api/sports/:sportId/facilities`
 
 Database layer:
 
@@ -107,6 +111,8 @@ Database layer:
   - Connection pool configuration
   - Schema bootstrap
   - Seed package data
+  - Seed sports data for the Choose Your Sport screen
+  - Seed sport events data for the Sport Events screen
   - Slot generation and persistence
   - Transactional booking writes
 
@@ -114,6 +120,7 @@ Scripts:
 
 - `backend/src/scripts/migrate.ts`
 - `backend/src/scripts/seed.ts`
+- `backend/src/scripts/resetSeed.ts`
 - `backend/src/scripts/smokeSlotLock.ts`
 
 ## 6. Database Model (Neon PostgreSQL)
@@ -122,6 +129,22 @@ Tables:
 
 - `packages`
   - id, label, price, per_label, sort_order
+  - audit columns: created_at, updated_at, deleted_at, created_by, updated_by
+
+- `sports`
+  - id, label, image_key, sort_order
+  - used by the Choose Your Sport screen
+  - audit columns: created_at, updated_at, deleted_at, created_by, updated_by
+
+- `sport_events`
+  - id, title_template, description_template, image_key, icon, action_target, sort_order
+  - used by the Sport Events screen
+  - audit columns: created_at, updated_at, deleted_at, created_by, updated_by
+
+- `sport_facilities`
+  - id, sport_id, code, title_template, price, tag, image_key, icon, action_target, sort_order
+  - used by the Sport Facility screen and keyed per selected sport
+  - unique constraint on `(sport_id, code)`
   - audit columns: created_at, updated_at, deleted_at, created_by, updated_by
 
 - `slots`
@@ -203,6 +226,9 @@ Docker:
 ## 10. Integration Notes
 
 - Frontend calls backend APIs through `frontend/src/lib/api.ts`.
+- Choose Your Sport data is fetched from `GET /api/sports` and falls back to the JSON reference files in `backend/src/data/json/sports.json` and `frontend/src/data/json/sports.json` when the DB/API is unavailable.
+- Sport Events data is fetched from `GET /api/sports/:sportId/events` and falls back to the JSON reference files in `backend/src/data/json/sport-events.json` and `frontend/src/data/json/sport-events.json` when the DB/API is unavailable.
+- Sport Facility data is fetched from `GET /api/sports/:sportId/facilities` and falls back to the JSON reference files in `backend/src/data/json/sport-facilities.json` and `frontend/src/data/json/sport-facilities.json` when the DB/API is unavailable.
 - Token from login is sent as `Authorization: Bearer` on protected endpoints.
 - Health endpoint includes DB configured state.
 - With no `DATABASE_URL`, backend can still provide deterministic slot behavior for non-persistent demo mode.

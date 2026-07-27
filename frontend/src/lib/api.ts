@@ -1,7 +1,29 @@
-import type { BookingHistoryResponse, BookingPayload, BookingResponse, LoginResponse, SlotsResponse } from '@/types';
+import type {
+  BookingHistoryResponse,
+  BookingPayload,
+  BookingResponse,
+  LoginResponse,
+  SlotsResponse,
+  SportFacilitiesResponse,
+  SportFacilityTemplate,
+  SportEventsResponse,
+  SportEventTemplate,
+  SportsResponse,
+  SportId,
+  SportOption,
+} from '@/types';
 import { markLocalBooked, mergeWithLocalBooked } from './localBookedSlots';
+import fallbackSports from '@/data/json/sports.json';
+import fallbackSportEvents from '@/data/json/sport-events.json';
+import fallbackSportFacilities from '@/data/json/sport-facilities.json';
 
 const BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+let cachedSportsResponse: SportsResponse | null = null;
+let cachedSportsRequest: Promise<SportsResponse> | null = null;
+const cachedSportEventsResponse = new Map<SportId, SportEventsResponse>();
+const cachedSportEventsRequest = new Map<SportId, Promise<SportEventsResponse>>();
+const cachedSportFacilitiesResponse = new Map<SportId, SportFacilitiesResponse>();
+const cachedSportFacilitiesRequest = new Map<SportId, Promise<SportFacilitiesResponse>>();
 
 function isNetworkError(error: unknown): boolean {
   return error instanceof TypeError && /failed to fetch/i.test(error.message);
@@ -37,13 +59,59 @@ function buildLocalSlots(date: string): SlotsResponse {
   return { slots };
 }
 
+function resolveTemplate(template: string, sportLabel: string): string {
+  return template
+    .replace(/\{sportLower\}/g, sportLabel.toLowerCase())
+    .replace(/\{sport\}/g, sportLabel);
+}
+
+function buildFallbackSportEvents(sportId: SportId): SportEventsResponse {
+  const sport = (fallbackSports as SportOption[]).find((item) => item.id === sportId) ?? (fallbackSports as SportOption[])[0];
+  const events = (fallbackSportEvents as SportEventTemplate[]).map((event) => ({
+    id: event.id,
+    title: resolveTemplate(event.titleTemplate, sport.label),
+    description: resolveTemplate(event.descriptionTemplate, sport.label),
+    imageKey: event.imageKey,
+    icon: event.icon,
+    actionTarget: event.actionTarget,
+    sortOrder: event.sortOrder,
+  }));
+
+  return { sport, events };
+}
+
+function buildFallbackSportFacilities(sportId: SportId): SportFacilitiesResponse {
+  const sport = (fallbackSports as SportOption[]).find((item) => item.id === sportId) ?? (fallbackSports as SportOption[])[0];
+  const facilities = (fallbackSportFacilities as SportFacilityTemplate[]).map((facility) => ({
+    id: `${sport.id}-${facility.code}`,
+    sportId: sport.id,
+    code: facility.code,
+    title: resolveTemplate(facility.titleTemplate, sport.label),
+    price: facility.price,
+    tag: facility.tag,
+    address: facility.address,
+    mapLocationUrl: facility.mapLocationUrl,
+    imageKey: facility.imageKey,
+    icon: facility.icon,
+    actionTarget: facility.actionTarget,
+    sortOrder: facility.sortOrder,
+  }));
+
+  return { sport, facilities };
+}
+
 async function request<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<T> {
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...(options.headers ?? {}),
+  };
+
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...options.headers },
     ...options,
+    headers,
   });
 
   if (!res.ok) {
@@ -85,6 +153,90 @@ export async function fetchSlots(date: string): Promise<SlotsResponse> {
   return {
     slots: mergeWithLocalBooked(date, response.slots),
   };
+}
+
+// ─── Sports ──────────────────────────────────────────────────
+
+export async function fetchSports(): Promise<SportsResponse> {
+  if (cachedSportsResponse) {
+    return cachedSportsResponse;
+  }
+
+  if (!cachedSportsRequest) {
+    cachedSportsRequest = request<SportsResponse>('/api/sports')
+      .then((response) => {
+        cachedSportsResponse = response;
+        return response;
+      })
+      .catch((_error) => {
+        const fallbackResponse = { sports: fallbackSports as SportsResponse['sports'] };
+        cachedSportsResponse = fallbackResponse;
+        return fallbackResponse;
+      })
+      .finally(() => {
+        cachedSportsRequest = null;
+      });
+  }
+
+  return cachedSportsRequest;
+}
+
+export async function fetchSportEvents(sportId: SportId): Promise<SportEventsResponse> {
+  const cachedResponse = cachedSportEventsResponse.get(sportId);
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  const cachedRequest = cachedSportEventsRequest.get(sportId);
+  if (cachedRequest) {
+    return cachedRequest;
+  }
+
+  const requestPromise = request<SportEventsResponse>(`/api/sports/${encodeURIComponent(sportId)}/events`)
+    .then((response) => {
+      cachedSportEventsResponse.set(sportId, response);
+      return response;
+    })
+    .catch((_error) => {
+      const fallbackResponse = buildFallbackSportEvents(sportId);
+      cachedSportEventsResponse.set(sportId, fallbackResponse);
+      return fallbackResponse;
+    })
+    .finally(() => {
+      cachedSportEventsRequest.delete(sportId);
+    });
+
+  cachedSportEventsRequest.set(sportId, requestPromise);
+  return requestPromise;
+}
+
+export async function fetchSportFacilities(sportId: SportId): Promise<SportFacilitiesResponse> {
+  const cachedResponse = cachedSportFacilitiesResponse.get(sportId);
+  if (cachedResponse) {
+    return cachedResponse;
+  }
+
+  const cachedRequest = cachedSportFacilitiesRequest.get(sportId);
+  if (cachedRequest) {
+    return cachedRequest;
+  }
+
+  const requestPromise = request<SportFacilitiesResponse>(`/api/sports/${encodeURIComponent(sportId)}/facilities`)
+    .then((response) => {
+      cachedSportFacilitiesResponse.set(sportId, response);
+      return response;
+    })
+    .catch((_error) => {
+      const fallbackResponse = buildFallbackSportFacilities(sportId);
+      cachedSportFacilitiesResponse.set(sportId, fallbackResponse);
+      return fallbackResponse;
+    })
+    .finally(() => {
+      cachedSportFacilitiesRequest.delete(sportId);
+    });
+
+  cachedSportFacilitiesRequest.set(sportId, requestPromise);
+  return requestPromise;
 }
 
 // ─── Bookings ─────────────────────────────────────────────────

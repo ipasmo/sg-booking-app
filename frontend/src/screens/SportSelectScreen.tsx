@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { ChevronRight, ShieldCheck } from 'lucide-react';
 import { useApp, useSelectBookingType } from '@/context/AppContext';
 import { announce } from '@/lib/utils';
@@ -12,7 +13,9 @@ import volleyballCard from '@/assets/card_volley_ball.png';
 import badmintonCard from '@/assets/card_badminton.png';
 import basketballCard from '@/assets/card_basket_ball.png';
 import kabaddiCard from '@/assets/card_kabaddi.png';
-import type { SportId } from '@/types';
+import fallbackSports from '@/data/json/sports.json';
+import { fetchSports } from '@/lib/api';
+import type { SportId, SportOption } from '@/types';
 
 type SportTile = {
   id: SportId;
@@ -20,52 +23,52 @@ type SportTile = {
   image: string;
 };
 
-const SPORTS: SportTile[] = [
-  {
-    id: 'cricket',
-    label: 'Cricket',
-    image: cricketCard,
-  },
-  {
-    id: 'indoor-cricket',
-    label: 'Indoor Cricket',
-    image: indoorCricketCard,
-  },
-  {
-    id: 'pickleball',
-    label: 'Pickleball',
-    image: pickleballCard,
-  },
-  {
-    id: 'soccer',
-    label: 'Soccer',
-    image: soccerCard,
-  },
-  {
-    id: 'volleyball',
-    label: 'Volleyball',
-    image: volleyballCard,
-  },
-  {
-    id: 'badminton',
-    label: 'Badminton',
-    image: badmintonCard,
-  },
-  {
-    id: 'basketball',
-    label: 'Basketball',
-    image: basketballCard,
-  },
-  {
-    id: 'kabaddi',
-    label: 'Kabaddi',
-    image: kabaddiCard,
-  },
-];
+const SPORT_IMAGES: Record<SportOption['imageKey'], string> = {
+  cricket: cricketCard,
+  'indoor-cricket': indoorCricketCard,
+  pickleball: pickleballCard,
+  soccer: soccerCard,
+  volleyball: volleyballCard,
+  badminton: badmintonCard,
+  basketball: basketballCard,
+  kabaddi: kabaddiCard,
+};
+
+function toSportTiles(sports: SportOption[]): SportTile[] {
+  return sports.map((sport) => ({
+    id: sport.id,
+    label: sport.label,
+    image: SPORT_IMAGES[sport.imageKey] ?? SPORT_IMAGES.cricket,
+  }));
+}
 
 export default function SportSelectScreen() {
   const { navigate, dispatch } = useApp();
   const selectType = useSelectBookingType();
+  const fallbackSportTiles = toSportTiles(fallbackSports as SportOption[]);
+  const [sports, setSports] = useState<SportTile[]>(() => fallbackSportTiles);
+
+  useEffect(() => {
+    let active = true;
+
+    fetchSports()
+      .then((response) => {
+        if (!active || response.sports.length === 0) {
+          return;
+        }
+
+        setSports(toSportTiles(response.sports));
+      })
+      .catch(() => {
+        if (active) {
+          setSports(fallbackSportTiles);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   function handleSportSelect(sport: SportTile) {
     selectType('court');
@@ -96,7 +99,7 @@ export default function SportSelectScreen() {
         </div>
 
         <div className="sport-grid" role="list" aria-label="Sports">
-          {SPORTS.map((sport) => (
+          {sports.map((sport) => (
             <button
               type="button"
               key={sport.id}

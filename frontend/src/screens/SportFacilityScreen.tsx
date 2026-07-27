@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { ArrowRight, CalendarDays, Clock3, MapPin, ShieldCheck, Star } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { announce } from '@/lib/utils';
@@ -5,89 +6,50 @@ import ScreenHeader from '@/components/ScreenHeader';
 import SportsBottomNav from '@/components/SportsBottomNav';
 import selectSportBackground from '@/assets/select_sport_bk.png';
 import cricketFacility from '@/assets/cricket_facility.png';
-import cricketGear from '@/assets/cricket_gear.png';
-import cricketCoach from '@/assets/cricket_coach.png';
-import cricketAcademy from '@/assets/cricket_academy.png';
-import indoorCricketCard from '@/assets/card_indoor_cricket.png';
-import cricketCard from '@/assets/card_cricket.png';
-import type { SportId } from '@/types';
+import bowlingLaneCard from '@/assets/bowling_lane.png';
+import cricketNetsCard from '@/assets/cricket_nets.png';
+import indoorCourtCard from '@/assets/indoor_court.png';
+import fallbackSports from '@/data/json/sports.json';
+import fallbackSportFacilities from '@/data/json/sport-facilities.json';
+import { fetchSportFacilities } from '@/lib/api';
+import type { SportFacilitiesResponse, SportFacilityCard, SportFacilityTemplate, SportId, SportOption } from '@/types';
 
-type FacilityCard = {
-  id: string;
-  title: string;
-  price: string;
-  image: string;
-  tag: string;
-  icon: 'lane' | 'net' | 'court' | 'field' | 'academy' | 'gear';
+const FACILITY_IMAGES: Record<SportFacilityCard['imageKey'], string> = {
+  'bowling-lane': bowlingLaneCard,
+  'nets-2': cricketNetsCard,
+  'nets-3': cricketNetsCard,
+  'nets-4': cricketNetsCard,
+  'indoor-court': indoorCourtCard,
+  'outdoor-field': cricketFacility,
 };
 
-const SPORT_LABELS: Record<SportId, string> = {
-  cricket: 'Cricket',
-  'indoor-cricket': 'Indoor Cricket',
-  pickleball: 'Pickleball',
-  soccer: 'Soccer',
-  volleyball: 'Volleyball',
-  badminton: 'Badminton',
-  basketball: 'Basketball',
-  kabaddi: 'Kabaddi',
-};
-
-const FACILITY_IMAGES = [cricketGear, indoorCricketCard, cricketFacility, cricketCard, cricketCoach, cricketAcademy];
-
-function buildFacilityCards(sportLabel: string): FacilityCard[] {
-  return [
-    {
-      id: 'bowling-lane',
-      title: `${sportLabel} Bowling Machine Lane`,
-      price: 'S$60',
-      image: FACILITY_IMAGES[0],
-      tag: 'Per Hour',
-      icon: 'lane',
-    },
-    {
-      id: 'net-2',
-      title: `${sportLabel} Net 2`,
-      price: 'S$45',
-      image: FACILITY_IMAGES[1],
-      tag: 'Per Hour',
-      icon: 'net',
-    },
-    {
-      id: 'net-3',
-      title: `${sportLabel} Net 3`,
-      price: 'S$45',
-      image: FACILITY_IMAGES[2],
-      tag: 'Per Hour',
-      icon: 'net',
-    },
-    {
-      id: 'net-4',
-      title: `${sportLabel} Net 4`,
-      price: 'S$45',
-      image: FACILITY_IMAGES[3],
-      tag: 'Per Hour',
-      icon: 'net',
-    },
-    {
-      id: 'indoor-court',
-      title: `${sportLabel} Indoor Court`,
-      price: 'S$140',
-      image: FACILITY_IMAGES[4],
-      tag: 'Per Hour',
-      icon: 'court',
-    },
-    {
-      id: 'outdoor-field',
-      title: `${sportLabel} Outdoor Field`,
-      price: 'S$100',
-      image: FACILITY_IMAGES[5],
-      tag: 'Per Hour',
-      icon: 'field',
-    },
-  ];
+function resolveTemplate(template: string, sportLabel: string): string {
+  return template
+    .replace(/\{sportLower\}/g, sportLabel.toLowerCase())
+    .replace(/\{sport\}/g, sportLabel);
 }
 
-function FacilityIcon({ kind }: { kind: FacilityCard['icon'] }) {
+function buildFallbackFacilityPage(sportId: SportId): SportFacilitiesResponse {
+  const sport = (fallbackSports as SportOption[]).find((item) => item.id === sportId) ?? (fallbackSports as SportOption[])[0];
+  const facilities = (fallbackSportFacilities as SportFacilityTemplate[]).map((facility) => ({
+    id: `${sport.id}-${facility.code}`,
+    sportId: sport.id,
+    code: facility.code,
+    title: resolveTemplate(facility.titleTemplate, sport.label),
+    price: facility.price,
+    tag: facility.tag,
+    address: facility.address,
+    mapLocationUrl: facility.mapLocationUrl,
+    imageKey: facility.imageKey,
+    icon: facility.icon,
+    actionTarget: facility.actionTarget,
+    sortOrder: facility.sortOrder,
+  }));
+
+  return { sport, facilities };
+}
+
+function FacilityIcon({ kind }: { kind: SportFacilityCard['icon'] }) {
   if (kind === 'lane') return <Star size={20} strokeWidth={2.3} />;
   if (kind === 'net') return <MapPin size={20} strokeWidth={2.3} />;
   if (kind === 'court') return <CalendarDays size={20} strokeWidth={2.3} />;
@@ -97,13 +59,37 @@ function FacilityIcon({ kind }: { kind: FacilityCard['icon'] }) {
 }
 
 export default function SportFacilityScreen() {
-  const { navigate, state } = useApp();
-  const sportLabel = SPORT_LABELS[state.selectedSport ?? 'cricket'];
-  const facilityCards = buildFacilityCards(sportLabel);
+  const { navigate, state, dispatch } = useApp();
+  const selectedSport = state.selectedSport ?? 'cricket';
+  const [facilityPage, setFacilityPage] = useState<SportFacilitiesResponse>(() => buildFallbackFacilityPage(selectedSport));
 
-  function handleFacilitySelect(title: string) {
-    announce(`${title} selected.`);
-    navigate('schedule');
+  useEffect(() => {
+    let active = true;
+
+    fetchSportFacilities(selectedSport)
+      .then((response) => {
+        if (active) {
+          setFacilityPage(response);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setFacilityPage(buildFallbackFacilityPage(selectedSport));
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedSport]);
+
+  const sportLabel = facilityPage.sport.label;
+  const facilityCards = facilityPage.facilities;
+
+  function handleFacilitySelect(card: SportFacilityCard) {
+    dispatch({ type: 'SET_SELECTED_FACILITY', payload: card });
+    announce(`${card.title} selected.`);
+    navigate(card.actionTarget);
   }
 
   return (
@@ -131,10 +117,10 @@ export default function SportFacilityScreen() {
               className="facility-select-card"
               role="listitem"
               aria-label={card.title}
-              onClick={() => handleFacilitySelect(card.title)}
+              onClick={() => handleFacilitySelect(card)}
             >
               <div className="facility-select-card-media">
-                <img src={card.image} alt={card.title} className="facility-select-card-image" />
+                <img src={FACILITY_IMAGES[card.imageKey]} alt={card.title} className="facility-select-card-image" />
                 <span className="facility-select-card-badge" aria-hidden="true">
                   <FacilityIcon kind={card.icon} />
                 </span>
@@ -165,7 +151,7 @@ export default function SportFacilityScreen() {
           </span>
           <span className="facility-select-note-text">
             <strong>All facilities are hourly bookings.</strong>
-            <small>Select a facility to check availability and book.</small>
+            <small>Select a facility to check slot availability for booking.</small>
           </span>
         </div>
 

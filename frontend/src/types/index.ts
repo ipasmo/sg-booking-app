@@ -2,11 +2,76 @@
 // Shared application types
 // ─────────────────────────────────────────────────────────────
 
-export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'terms' | 'login' | 'checkout' | 'success' | 'bookings';
+export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'terms' | 'login' | 'checkout' | 'booking-confirmation' | 'bookings';
 export type SportId = 'cricket' | 'indoor-cricket' | 'pickleball' | 'soccer' | 'volleyball' | 'badminton' | 'basketball' | 'kabaddi';
+export type SportImageKey = SportId;
 export type BookingType = 'court' | 'coaching';
 export type PayMethod = 'STRIPE' | 'GPAY' | 'PAYNOW' | 'GRABPAY';
 export type PaymentStatus = 'success' | 'cash';
+
+export interface SportOption {
+  id: SportId;
+  label: string;
+  imageKey: SportImageKey;
+  bannerKey: SportId;
+  sortOrder: number;
+}
+
+export type SportEventImageKey = 'facility' | 'academy' | 'coach' | 'gear';
+export type SportEventActionTarget = 'facility-select' | 'schedule';
+export type SportEventIcon = 'calendar' | 'academy' | 'coach' | 'shop';
+
+export type SportFacilityImageKey = 'bowling-lane' | 'nets-2' | 'nets-3' | 'nets-4' | 'indoor-court' | 'outdoor-field';
+export type SportFacilityActionTarget = 'schedule';
+export type SportFacilityIcon = 'lane' | 'net' | 'court' | 'field' | 'academy' | 'gear';
+
+export interface SportEventTemplate {
+  id: string;
+  titleTemplate: string;
+  descriptionTemplate: string;
+  imageKey: SportEventImageKey;
+  icon: SportEventIcon;
+  actionTarget: SportEventActionTarget;
+  sortOrder: number;
+}
+
+export interface SportEventCard {
+  id: string;
+  title: string;
+  description: string;
+  imageKey: SportEventImageKey;
+  icon: SportEventIcon;
+  actionTarget: SportEventActionTarget;
+  sortOrder: number;
+}
+
+export interface SportFacilityTemplate {
+  code: string;
+  titleTemplate: string;
+  price: string;
+  tag: string;
+  imageKey: SportFacilityImageKey;
+  icon: SportFacilityIcon;
+  actionTarget: SportFacilityActionTarget;
+  sortOrder: number;
+  address: string;
+  mapLocationUrl: string;
+}
+
+export interface SportFacilityCard {
+  id: string;
+  sportId: SportId;
+  code: string;
+  title: string;
+  price: string;
+  tag: string;
+  imageKey: SportFacilityImageKey;
+  icon: SportFacilityIcon;
+  actionTarget: SportFacilityActionTarget;
+  sortOrder: number;
+  address: string;
+  mapLocationUrl: string;
+}
 
 export interface Duration {
   label: string;
@@ -33,6 +98,7 @@ export interface AppState {
   selectedTime: string | null;     // 'HH:MM'
   durationMins: number;
   selectedSport: SportId | null;
+  selectedFacility: SportFacilityCard | null;
   packageOption: string | null;
   isLoggedIn: boolean;
   customerEmail: string;
@@ -56,6 +122,7 @@ export type Action =
   | { type: 'SET_SCREEN'; payload: Screen }
   | { type: 'SET_BOOKING_TYPE'; payload: BookingType }
   | { type: 'SET_SELECTED_SPORT'; payload: SportId }
+  | { type: 'SET_SELECTED_FACILITY'; payload: SportFacilityCard | null }
   | { type: 'SET_DATE'; payload: string }
   | { type: 'SET_TIME'; payload: string }
   | { type: 'SET_DURATION'; payload: number }
@@ -93,6 +160,20 @@ export interface LoginResponse {
 
 export interface SlotsResponse {
   slots: TimeSlot[];
+}
+
+export interface SportsResponse {
+  sports: SportOption[];
+}
+
+export interface SportEventsResponse {
+  sport: SportOption;
+  events: SportEventCard[];
+}
+
+export interface SportFacilitiesResponse {
+  sport: SportOption;
+  facilities: SportFacilityCard[];
 }
 
 export interface BookingResponse {

@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   ArrowRight,
   CalendarDays,
@@ -16,70 +17,83 @@ import indoorCricketCard from '@/assets/card_indoor_cricket.png';
 import pickleballCard from '@/assets/card_pickle_ball.png';
 import soccerCard from '@/assets/card_soccer.png';
 import volleyballCard from '@/assets/card_volley_ball.png';
-import kabaddiCard from '@/assets/card_kabaddi.png';
 import badmintonCard from '@/assets/card_badminton.png';
 import basketballCard from '@/assets/card_basket_ball.png';
+import kabaddiCard from '@/assets/card_kabaddi.png';
 import imgCricketFacility from '@/assets/cricket_facility.png';
 import imgCricketAcademy from '@/assets/cricket_academy.png';
 import imgCricketCoach from '@/assets/cricket_coach.png';
 import imgCricketGear from '@/assets/cricket_gear.png';
-import type { SportId } from '@/types';
+import fallbackSports from '@/data/json/sports.json';
+import fallbackSportEvents from '@/data/json/sport-events.json';
+import { fetchSportEvents } from '@/lib/api';
+import type { SportEventCard, SportEventsResponse, SportId, SportOption } from '@/types';
 
-type EventCard = {
-  id: string;
-  title: string;
-  description: string;
-  image: string;
-  icon: 'calendar' | 'academy' | 'coach' | 'shop';
+type SportBannerMap = Record<SportOption['bannerKey'], string>;
+type SportCardMap = Record<SportId, string>;
+type EventImageMap = Record<SportEventCard['imageKey'], string>;
+
+const SPORT_BANNERS: SportBannerMap = {
+  cricket: cricketBanner,
+  'indoor-cricket': indoorCricketCard,
+  pickleball: pickleballCard,
+  soccer: soccerCard,
+  volleyball: volleyballCard,
+  badminton: badmintonCard,
+  basketball: basketballCard,
+  kabaddi: kabaddiCard,
 };
 
-const SPORT_ASSETS: Record<SportId, { label: string; banner: string; card: string }> = {
-  cricket: { label: 'Cricket', banner: cricketBanner, card: cricketCard },
-  'indoor-cricket': { label: 'Indoor Cricket', banner: indoorCricketCard, card: indoorCricketCard },
-  pickleball: { label: 'Pickleball', banner: pickleballCard, card: pickleballCard },
-  soccer: { label: 'Soccer', banner: soccerCard, card: soccerCard },
-  volleyball: { label: 'Volleyball', banner: volleyballCard, card: volleyballCard },
-  badminton: { label: 'Badminton', banner: badmintonCard, card: badmintonCard },
-  basketball: { label: 'Basketball', banner: basketballCard, card: basketballCard },
-  kabaddi: { label: 'Kabaddi', banner: kabaddiCard, card: kabaddiCard },
+const SPORT_CARDS: SportCardMap = {
+  cricket: cricketCard,
+  'indoor-cricket': indoorCricketCard,
+  pickleball: pickleballCard,
+  soccer: soccerCard,
+  volleyball: volleyballCard,
+  badminton: badmintonCard,
+  basketball: basketballCard,
+  kabaddi: kabaddiCard,
 };
 
-const FEATURE_IMAGES = [imgCricketFacility, imgCricketAcademy, imgCricketCoach, imgCricketGear];
+const EVENT_IMAGES: EventImageMap = {
+  facility: imgCricketFacility,
+  academy: imgCricketAcademy,
+  coach: imgCricketCoach,
+  gear: imgCricketGear,
+};
 
-function buildEventCards(sportName: string): EventCard[] {
-  return [
-    {
-      id: 'book-facility',
-      title: 'Book a Facility',
-      description: `Find and book top ${sportName.toLowerCase()} venues near you.`,
-      image: FEATURE_IMAGES[0],
-      icon: 'calendar',
-    },
-    {
-      id: 'join-academy',
-      title: `Join ${sportName} Academy`,
-      description: `Learn from expert coaches and take your ${sportName.toLowerCase()} game to the next level.`,
-      image: FEATURE_IMAGES[1],
-      icon: 'academy',
-    },
-    {
-      id: 'coach-session',
-      title: 'Book a One on One Session with Coach',
-      description: `Get personalized ${sportName.toLowerCase()} coaching to improve your skills faster.`,
-      image: FEATURE_IMAGES[2],
-      icon: 'coach',
-    },
-    {
-      id: 'purchase-gear',
-      title: 'Purchase Gear',
-      description: `Shop the best ${sportName.toLowerCase()} gear and equipment.`,
-      image: FEATURE_IMAGES[3],
-      icon: 'shop',
-    },
-  ];
+const DISABLED_EVENT_IDS = new Set(['join-academy', 'coach-session', 'purchase-gear']);
+
+function resolveTemplate(template: string, sportLabel: string): string {
+  return template
+    .replace(/\{sportLower\}/g, sportLabel.toLowerCase())
+    .replace(/\{sport\}/g, sportLabel);
 }
 
-function FeatureIcon({ kind }: { kind: EventCard['icon'] }) {
+function buildFallbackSportPage(sportId: SportId): SportEventsResponse {
+  const sport = (fallbackSports as SportOption[]).find((item) => item.id === sportId) ?? (fallbackSports as SportOption[])[0];
+  const events = (fallbackSportEvents as Array<{
+    id: string;
+    titleTemplate: string;
+    descriptionTemplate: string;
+    imageKey: SportEventCard['imageKey'];
+    icon: SportEventCard['icon'];
+    actionTarget: SportEventCard['actionTarget'];
+    sortOrder: number;
+  }>).map((event) => ({
+    id: event.id,
+    title: resolveTemplate(event.titleTemplate, sport.label),
+    description: resolveTemplate(event.descriptionTemplate, sport.label),
+    imageKey: event.imageKey,
+    icon: event.icon,
+    actionTarget: event.actionTarget,
+    sortOrder: event.sortOrder,
+  }));
+
+  return { sport, events };
+}
+
+function FeatureIcon({ kind }: { kind: SportEventCard['icon'] }) {
   if (kind === 'calendar') return <CalendarDays size={22} strokeWidth={2.1} />;
   if (kind === 'academy') return <GraduationCap size={22} strokeWidth={2.1} />;
   if (kind === 'coach') return <User size={22} strokeWidth={2.1} />;
@@ -89,16 +103,39 @@ function FeatureIcon({ kind }: { kind: EventCard['icon'] }) {
 export default function SportEventsScreen() {
   const { navigate, state } = useApp();
   const selectedSport = state.selectedSport ?? 'cricket';
-  const selectedSportMeta = SPORT_ASSETS[selectedSport];
-  const eventCards = buildEventCards(selectedSportMeta.label);
+  const [sportPage, setSportPage] = useState<SportEventsResponse>(() => buildFallbackSportPage(selectedSport));
 
-  function handleCardAction(cardId: string, title: string) {
-    announce(`${title} selected.`);
-    if (cardId === 'book-facility') {
-      navigate('facility-select');
+  useEffect(() => {
+    let active = true;
+
+    fetchSportEvents(selectedSport)
+      .then((response) => {
+        if (active) {
+          setSportPage(response);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setSportPage(buildFallbackSportPage(selectedSport));
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [selectedSport]);
+
+  const selectedSportMeta = sportPage.sport;
+  const selectedSportBanner = SPORT_BANNERS[selectedSportMeta.bannerKey] ?? SPORT_BANNERS.cricket;
+  const selectedSportCard = SPORT_CARDS[selectedSportMeta.id] ?? SPORT_CARDS.cricket;
+
+  function handleCardAction(card: SportEventCard) {
+    if (DISABLED_EVENT_IDS.has(card.id)) {
       return;
     }
-    navigate('schedule');
+
+    announce(`${card.title} selected.`);
+    navigate(card.actionTarget);
   }
 
   return (
@@ -111,7 +148,7 @@ export default function SportEventsScreen() {
 
         <section className="sport-events-hero">
           <div className="sport-events-hero-left" aria-hidden="true">
-            <img src={selectedSportMeta.banner} alt="" className="sport-events-hero-banner" />
+            <img src={selectedSportBanner} alt="" className="sport-events-hero-banner" />
           </div>
           <div className="sport-events-hero-right">
             <h1>{selectedSportMeta.label}</h1>
@@ -125,17 +162,23 @@ export default function SportEventsScreen() {
         </section>
 
         <div className="sport-events-grid" role="list" aria-label={`${selectedSportMeta.label} features`}>
-          {eventCards.map((card) => (
+          {sportPage.events.map((card) => (
             <button
               type="button"
               key={card.id}
-              className="sport-event-card"
+              className={`sport-event-card${DISABLED_EVENT_IDS.has(card.id) ? ' is-disabled' : ''}`}
               role="listitem"
               aria-label={card.title}
-              onClick={() => handleCardAction(card.id, card.title)}
+              aria-disabled={DISABLED_EVENT_IDS.has(card.id)}
+              disabled={DISABLED_EVENT_IDS.has(card.id)}
+              onClick={() => handleCardAction(card)}
             >
               <div className="sport-event-card-media">
-                <img src={card.image} alt={card.title} className="sport-event-card-image" />
+                <img
+                  src={EVENT_IMAGES[card.imageKey] ?? selectedSportCard}
+                  alt={card.title}
+                  className="sport-event-card-image"
+                />
                 <span className="sport-event-card-badge" aria-hidden="true">
                   <FeatureIcon kind={card.icon} />
                 </span>

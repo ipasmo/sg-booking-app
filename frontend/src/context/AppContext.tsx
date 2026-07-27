@@ -19,6 +19,7 @@ const initialState: AppState = {
   selectedTime:     null,
   durationMins:     60,
   selectedSport:    null,
+  selectedFacility: null,
   packageOption:    null,
   isLoggedIn:       false,
   customerEmail:    '',
@@ -58,10 +59,24 @@ function reducer(state: AppState, action: Action): AppState {
     }
 
     case 'SET_SELECTED_SPORT':
-      return { ...state, selectedSport: action.payload };
+      return { ...state, selectedSport: action.payload, selectedFacility: null };
+
+    case 'SET_SELECTED_FACILITY':
+      return { ...state, selectedFacility: action.payload };
 
     case 'SET_DATE':
-      return { ...state, selectedDate: action.payload, selectedTime: null, slots: [], slotsError: null };
+      if (state.selectedDate === action.payload) {
+        return state;
+      }
+
+      return {
+        ...state,
+        selectedDate: action.payload,
+        selectedTime: null,
+        slots: [],
+        slotsLoading: true,
+        slotsError: null,
+      };
 
     case 'SET_TIME':
       return { ...state, selectedTime: action.payload };
@@ -154,7 +169,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       // Navigation guards
       if (target === 'schedule' && !state.bookingType)           return;
       if (target === 'terms' && (!state.selectedDate || !state.selectedTime)) return;
-      if (target === 'success' && state.screen !== 'checkout')    return; // only via payment flow
+      if (target === 'booking-confirmation' && state.screen !== 'checkout')    return; // only via payment flow
       if (target === 'checkout' && !state.isLoggedIn) {
         dispatch({ type: 'SET_POST_LOGIN_REDIRECT', payload: 'checkout' });
         dispatch({ type: 'SET_SCREEN', payload: 'login' });
@@ -173,7 +188,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const goBack = useCallback(() => {
-    const order: Screen[] = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'terms', 'login', 'checkout', 'success', 'bookings'];
+    const order: Screen[] = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'terms', 'login', 'checkout', 'booking-confirmation', 'bookings'];
     const idx = order.indexOf(state.screen);
     if (idx <= 0) return;
 

@@ -20,4 +20,4 @@ export const PACKAGES: Package[] = [
 
 export const PAY_OPTS = ['STRIPE', 'GPAY', 'PAYNOW', 'GRABPAY'] as const;
 
-export const ALL_SCREENS = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'terms', 'login', 'checkout', 'success'] as const;
+export const ALL_SCREENS = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'terms', 'login', 'checkout', 'booking-confirmation'] as const;

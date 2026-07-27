@@ -1,0 +1,38 @@
+[
+  {
+    "id": "book-facility",
+    "titleTemplate": "Book a Facility",
+    "descriptionTemplate": "Find and book top {sportLower} venues near you.",
+    "imageKey": "facility",
+    "icon": "calendar",
+    "actionTarget": "facility-select",
+    "sortOrder": 1
+  },
+  {
+    "id": "join-academy",
+    "titleTemplate": "Join {sport} Academy",
+    "descriptionTemplate": "Learn from expert coaches and take your {sportLower} game to the next level.",
+    "imageKey": "academy",
+    "icon": "academy",
+    "actionTarget": "schedule",
+    "sortOrder": 2
+  },
+  {
+    "id": "coach-session",
+    "titleTemplate": "Book a One on One Session with Coach",
+    "descriptionTemplate": "Get personalized {sportLower} coaching to improve your skills faster.",
+    "imageKey": "coach",
+    "icon": "coach",
+    "actionTarget": "schedule",
+    "sortOrder": 3
+  },
+  {
+    "id": "purchase-gear",
+    "titleTemplate": "Purchase Gear",
+    "descriptionTemplate": "Shop the best {sportLower} gear and equipment.",
+    "imageKey": "gear",
+    "icon": "shop",
+    "actionTarget": "schedule",
+    "sortOrder": 4
+  }
+]

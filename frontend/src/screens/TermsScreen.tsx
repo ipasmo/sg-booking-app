@@ -16,6 +16,11 @@ import { useApp } from '@/context/AppContext';
 import ScreenHeader from '@/components/ScreenHeader';
 import pageBackground from '@/assets/select_sport_bk.png';
 import indoorCricketCard from '@/assets/card_indoor_cricket.png';
+import bowlingLaneCard from '@/assets/bowling_lane.png';
+import cricketNetsCard from '@/assets/cricket_nets.png';
+import indoorCourtCard from '@/assets/indoor_court.png';
+import cricketFacility from '@/assets/cricket_facility.png';
+import { formatDateShort } from '@/lib/utils';
 
 const SPORT_LABELS = {
   cricket: 'Cricket',
@@ -26,6 +31,15 @@ const SPORT_LABELS = {
   badminton: 'Badminton',
   basketball: 'Basketball',
   kabaddi: 'Kabaddi',
+} as const;
+
+const FACILITY_IMAGES = {
+  'bowling-lane': bowlingLaneCard,
+  'nets-2': cricketNetsCard,
+  'nets-3': cricketNetsCard,
+  'nets-4': cricketNetsCard,
+  'indoor-court': indoorCourtCard,
+  'outdoor-field': cricketFacility,
 } as const;
 
 const FACILITY_RATE_PER_HOUR = 45;
@@ -79,20 +93,25 @@ function addMinutes(time: string, minutes: number): string {
   return `${String(nextH).padStart(2, '0')}:${String(nextM).padStart(2, '0')}`;
 }
 
+function parseRate(price: string): number {
+  const parsed = Number(price.replace(/[^0-9.]/g, ''));
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : FACILITY_RATE_PER_HOUR;
+}
+
 export default function TermsScreen() {
   const { state, navigate, goBack } = useApp();
   const [agreed, setAgreed] = useState(false);
   const [expandedTerms, setExpandedTerms] = useState<number[]>([]);
 
   const selectedSportLabel = state.selectedSport ? SPORT_LABELS[state.selectedSport] : 'Cricket';
-  const selectedDateText = state.selectedDate
-    ? new Date(`${state.selectedDate}T00:00:00`).toLocaleDateString('en-SG', {
-      day: 'numeric', month: 'short', year: 'numeric', weekday: 'short',
-    })
-    : 'Not selected';
+  const selectedFacilityTitle = state.selectedFacility?.title ?? `${selectedSportLabel} Facility`;
+  const selectedFacilityAddress = state.selectedFacility?.address ?? 'Location not available';
+  const selectedFacilityImage = state.selectedFacility ? FACILITY_IMAGES[state.selectedFacility.imageKey] : indoorCricketCard;
+  const selectedRatePerHour = state.selectedFacility ? parseRate(state.selectedFacility.price) : FACILITY_RATE_PER_HOUR;
+  const selectedDateText = state.selectedDate ? formatDateShort(state.selectedDate) : 'Not selected';
 
   const selectedEndTime = state.selectedTime ? addMinutes(state.selectedTime, state.durationMins) : null;
-  const total = (FACILITY_RATE_PER_HOUR * (state.durationMins / 60)).toFixed(2);
+  const total = (selectedRatePerHour * (state.durationMins / 60)).toFixed(2);
 
   function handleProceed() {
     if (!agreed) return;
@@ -187,13 +206,37 @@ export default function TermsScreen() {
         <section className="terms-summary-card">
           <h2>Booking Summary</h2>
           <div className="terms-summary-body">
-            <img src={indoorCricketCard} alt="Facility preview" className="terms-summary-image" />
+            <img src={selectedFacilityImage} alt={selectedFacilityTitle} className="terms-summary-image" />
             <div className="terms-summary-info">
-              <h3>{selectedSportLabel} Net 2</h3>
-              <p><MapPin size={14} strokeWidth={2.2} />Kallang, Singapore</p>
-              <p><CalendarClock size={14} strokeWidth={2.2} />{selectedDateText}</p>
+              <h3>{selectedFacilityTitle}</h3>
+              <p className="terms-summary-location">
+                {state.selectedFacility?.mapLocationUrl ? (
+                  <a
+                    className="terms-summary-location-link"
+                    href={state.selectedFacility.mapLocationUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    aria-label={`Open map for ${selectedFacilityTitle}`}
+                  >
+                    <MapPin size={15} strokeWidth={2.3} />
+                  </a>
+                ) : (
+                  <span className="terms-summary-location-link" aria-hidden="true">
+                    <MapPin size={15} strokeWidth={2.3} />
+                  </span>
+                )}
+                <span className="terms-summary-location-text">{selectedFacilityAddress}</span>
+              </p>
               <p>
-                <Clock3 size={14} strokeWidth={2.2} />
+                <span className="terms-summary-icon-pill" aria-hidden="true">
+                  <CalendarClock size={15} strokeWidth={2.3} />
+                </span>
+                {selectedDateText}
+              </p>
+              <p>
+                <span className="terms-summary-icon-pill" aria-hidden="true">
+                  <Clock3 size={15} strokeWidth={2.3} />
+                </span>
                 {state.selectedTime && selectedEndTime
                   ? `${to12Hour(state.selectedTime)} - ${to12Hour(selectedEndTime)} (${state.durationMins} min)`
                   : 'Time not selected'}
