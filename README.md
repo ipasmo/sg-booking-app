@@ -340,15 +340,20 @@ GitHub-connected deployment from `main` (preferred):
 
 - Base directory: `frontend`
 - Build command: `npm ci && npm run build`
-- Publish directory: `frontend/dist`
+- Publish directory: `dist`
+- Functions directory: leave blank
 - Production branch: `main`
 
-4. Add environment variables in Netlify UI:
+4. Create the site.
+
+5. Add environment variables in Netlify UI:
 
 - `VITE_API_BASE_URL=https://your-backend-domain.com`
 - `VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com` (if Google login is enabled)
 
-5. Enable auto-deploys (default) so each push to `main` deploys frontend.
+You can add `VITE_API_BASE_URL` after the site is created. Because Vite reads it at build time, trigger a redeploy after adding or changing it.
+
+6. Enable auto-deploys (default) so each push to `main` deploys frontend.
 
 1. Build frontend locally to validate before deploy.
 
@@ -369,6 +374,8 @@ netlify deploy --prod --dir=frontend/dist
 3. Configure Netlify environment variable:
 
 - `VITE_API_BASE_URL=https://your-backend-domain.com`
+
+If you add or change `VITE_API_BASE_URL` after the first deploy, redeploy the site so the frontend build picks it up.
 
 4. If using Google login, also set:
 
@@ -531,12 +538,15 @@ git push origin main
 
 - Base directory: `frontend`
 - Build command: `npm ci && npm run build`
-- Publish directory: `frontend/dist`
+- Publish directory: `dist`
+- Functions directory: leave blank
 
 4. Add environment variables in Netlify:
 
 - `VITE_API_BASE_URL=https://your-backend-domain.com`
 - `VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com`
+
+You can create the Netlify site before adding `VITE_API_BASE_URL`, but you must redeploy after setting it.
 
 5. Enable auto deploy on push to `main`.
 
