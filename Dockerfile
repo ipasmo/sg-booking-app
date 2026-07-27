@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────
-# Pickleball SG — Dockerfile
+# SportyGo Booking App — Dockerfile
 # Serves the single-file static app via Nginx Alpine.
 # Same image works for local development and production.
 # ─────────────────────────────────────────────────────────────

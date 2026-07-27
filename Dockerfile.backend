@@ -3,7 +3,7 @@
 # Multi-stage build: TypeScript compile → Node.js runtime
 # ─────────────────────────────────────────────────────────────
 
-# Build context: project root (pickleball_booking/)
+# Build context: project root (sg-booking-app/)
 # Stage 1 — build
 FROM node:20-alpine AS builder
 
