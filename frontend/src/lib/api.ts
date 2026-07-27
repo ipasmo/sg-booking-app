@@ -26,7 +26,12 @@ const cachedSportFacilitiesResponse = new Map<SportId, SportFacilitiesResponse>(
 const cachedSportFacilitiesRequest = new Map<SportId, Promise<SportFacilitiesResponse>>();
 
 function isNetworkError(error: unknown): boolean {
-  return error instanceof TypeError && /failed to fetch/i.test(error.message);
+  return error instanceof TypeError && /failed to fetch|networkerror|load failed/i.test(error.message);
+}
+
+function isUnavailableApiError(error: unknown): boolean {
+  if (!(error instanceof Error)) return false;
+  return /request failed:\s*(404|5\d\d)/i.test(error.message);
 }
 
 function isAuthTokenError(error: unknown): boolean {
@@ -146,7 +151,7 @@ export async function fetchSlots(date: string): Promise<SlotsResponse> {
     response = await request<SlotsResponse>(`/api/slots?date=${encodeURIComponent(date)}`);
   } catch (error) {
     // Keep Schedule usable in demo/dev when backend is temporarily unavailable.
-    if (!isNetworkError(error)) throw error;
+    if (!isNetworkError(error) && !isUnavailableApiError(error)) throw error;
     response = buildLocalSlots(date);
   }
 
