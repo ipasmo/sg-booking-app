@@ -2,9 +2,76 @@
 // Shared application types
 // ─────────────────────────────────────────────────────────────
 
-export type Screen = 'home' | 'schedule' | 'login' | 'checkout' | 'success';
+export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'terms' | 'login' | 'checkout' | 'booking-confirmation' | 'bookings';
+export type SportId = 'cricket' | 'indoor-cricket' | 'pickleball' | 'soccer' | 'volleyball' | 'badminton' | 'basketball' | 'kabaddi';
+export type SportImageKey = SportId;
 export type BookingType = 'court' | 'coaching';
-export type PayMethod = 'STRIPE' | 'PAYNOW' | 'GRABPAY';
+export type PayMethod = 'STRIPE' | 'GPAY' | 'PAYNOW' | 'GRABPAY';
+export type PaymentStatus = 'success' | 'cash';
+
+export interface SportOption {
+  id: SportId;
+  label: string;
+  imageKey: SportImageKey;
+  bannerKey: SportId;
+  sortOrder: number;
+}
+
+export type SportEventImageKey = 'facility' | 'academy' | 'coach' | 'gear';
+export type SportEventActionTarget = 'facility-select' | 'schedule';
+export type SportEventIcon = 'calendar' | 'academy' | 'coach' | 'shop';
+
+export type SportFacilityImageKey = 'bowling-lane' | 'nets-2' | 'nets-3' | 'nets-4' | 'indoor-court' | 'outdoor-field';
+export type SportFacilityActionTarget = 'schedule';
+export type SportFacilityIcon = 'lane' | 'net' | 'court' | 'field' | 'academy' | 'gear';
+
+export interface SportEventTemplate {
+  id: string;
+  titleTemplate: string;
+  descriptionTemplate: string;
+  imageKey: SportEventImageKey;
+  icon: SportEventIcon;
+  actionTarget: SportEventActionTarget;
+  sortOrder: number;
+}
+
+export interface SportEventCard {
+  id: string;
+  title: string;
+  description: string;
+  imageKey: SportEventImageKey;
+  icon: SportEventIcon;
+  actionTarget: SportEventActionTarget;
+  sortOrder: number;
+}
+
+export interface SportFacilityTemplate {
+  code: string;
+  titleTemplate: string;
+  price: string;
+  tag: string;
+  imageKey: SportFacilityImageKey;
+  icon: SportFacilityIcon;
+  actionTarget: SportFacilityActionTarget;
+  sortOrder: number;
+  address: string;
+  mapLocationUrl: string;
+}
+
+export interface SportFacilityCard {
+  id: string;
+  sportId: SportId;
+  code: string;
+  title: string;
+  price: string;
+  tag: string;
+  imageKey: SportFacilityImageKey;
+  icon: SportFacilityIcon;
+  actionTarget: SportFacilityActionTarget;
+  sortOrder: number;
+  address: string;
+  mapLocationUrl: string;
+}
 
 export interface Duration {
   label: string;
@@ -30,6 +97,8 @@ export interface AppState {
   selectedDate: string | null;     // ISO date: 'YYYY-MM-DD'
   selectedTime: string | null;     // 'HH:MM'
   durationMins: number;
+  selectedSport: SportId | null;
+  selectedFacility: SportFacilityCard | null;
   packageOption: string | null;
   isLoggedIn: boolean;
   customerEmail: string;
@@ -43,13 +112,17 @@ export interface AppState {
   tax: number;
   grandTotal: number;
   receiptId: string;
+  paymentStatus: PaymentStatus | null;
   whatsAppMockSent: boolean;
   paymentError: string | null;
+  postLoginRedirect: Screen | null;
 }
 
 export type Action =
   | { type: 'SET_SCREEN'; payload: Screen }
   | { type: 'SET_BOOKING_TYPE'; payload: BookingType }
+  | { type: 'SET_SELECTED_SPORT'; payload: SportId }
+  | { type: 'SET_SELECTED_FACILITY'; payload: SportFacilityCard | null }
   | { type: 'SET_DATE'; payload: string }
   | { type: 'SET_TIME'; payload: string }
   | { type: 'SET_DURATION'; payload: number }
@@ -62,7 +135,9 @@ export type Action =
   | { type: 'CLEAR_SLOTS_ERROR' }
   | { type: 'SET_PRICING'; payload: { priceSubtotal: number; tax: number; platformFee: number; grandTotal: number } }
   | { type: 'SET_RECEIPT'; payload: string }
+  | { type: 'SET_PAYMENT_STATUS'; payload: PaymentStatus }
   | { type: 'SET_PAYMENT_ERROR'; payload: string | null }
+  | { type: 'SET_POST_LOGIN_REDIRECT'; payload: Screen | null }
   | { type: 'MARK_WHATSAPP_SENT' }
   | { type: 'RESET' };
 
@@ -87,7 +162,37 @@ export interface SlotsResponse {
   slots: TimeSlot[];
 }
 
+export interface SportsResponse {
+  sports: SportOption[];
+}
+
+export interface SportEventsResponse {
+  sport: SportOption;
+  events: SportEventCard[];
+}
+
+export interface SportFacilitiesResponse {
+  sport: SportOption;
+  facilities: SportFacilityCard[];
+}
+
 export interface BookingResponse {
   receiptId: string;
-  status: string;
+  status: PaymentStatus;
+  paymentMethod: 'ONLINE' | 'CASH';
+}
+
+export interface BookingHistoryItem {
+  receiptId: string;
+  bookingType: BookingType;
+  slotDate: string;
+  slotTime: string;
+  durationMins: number;
+  grandTotal: number;
+  status: 'confirmed' | 'cash_pending';
+  paymentMethod: 'ONLINE' | 'CASH';
+}
+
+export interface BookingHistoryResponse {
+  bookings: BookingHistoryItem[];
 }

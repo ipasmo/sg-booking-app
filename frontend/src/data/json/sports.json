@@ -1,0 +1,10 @@
+[
+  { "id": "cricket", "label": "Cricket", "imageKey": "cricket", "bannerKey": "cricket", "sortOrder": 1 },
+  { "id": "indoor-cricket", "label": "Indoor Cricket", "imageKey": "indoor-cricket", "bannerKey": "indoor-cricket", "sortOrder": 2 },
+  { "id": "pickleball", "label": "Pickleball", "imageKey": "pickleball", "bannerKey": "pickleball", "sortOrder": 3 },
+  { "id": "soccer", "label": "Soccer", "imageKey": "soccer", "bannerKey": "soccer", "sortOrder": 4 },
+  { "id": "volleyball", "label": "Volleyball", "imageKey": "volleyball", "bannerKey": "volleyball", "sortOrder": 5 },
+  { "id": "badminton", "label": "Badminton", "imageKey": "badminton", "bannerKey": "badminton", "sortOrder": 6 },
+  { "id": "basketball", "label": "Basketball", "imageKey": "basketball", "bannerKey": "basketball", "sortOrder": 7 },
+  { "id": "kabaddi", "label": "Kabaddi", "imageKey": "kabaddi", "bannerKey": "kabaddi", "sortOrder": 8 }
+]

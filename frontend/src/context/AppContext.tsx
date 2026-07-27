@@ -18,6 +18,8 @@ const initialState: AppState = {
   selectedDate:     null,
   selectedTime:     null,
   durationMins:     60,
+  selectedSport:    null,
+  selectedFacility: null,
   packageOption:    null,
   isLoggedIn:       false,
   customerEmail:    '',
@@ -31,8 +33,10 @@ const initialState: AppState = {
   tax:              0,
   grandTotal:       0,
   receiptId:        '',
+  paymentStatus:    null,
   whatsAppMockSent: false,
   paymentError:     null,
+  postLoginRedirect: null,
 
 };
 
@@ -54,8 +58,25 @@ function reducer(state: AppState, action: Action): AppState {
       };
     }
 
+    case 'SET_SELECTED_SPORT':
+      return { ...state, selectedSport: action.payload, selectedFacility: null };
+
+    case 'SET_SELECTED_FACILITY':
+      return { ...state, selectedFacility: action.payload };
+
     case 'SET_DATE':
-      return { ...state, selectedDate: action.payload, selectedTime: null, slots: [], slotsError: null };
+      if (state.selectedDate === action.payload) {
+        return state;
+      }
+
+      return {
+        ...state,
+        selectedDate: action.payload,
+        selectedTime: null,
+        slots: [],
+        slotsLoading: true,
+        slotsError: null,
+      };
 
     case 'SET_TIME':
       return { ...state, selectedTime: action.payload };
@@ -99,8 +120,14 @@ function reducer(state: AppState, action: Action): AppState {
     case 'SET_RECEIPT':
       return { ...state, receiptId: action.payload };
 
+    case 'SET_PAYMENT_STATUS':
+      return { ...state, paymentStatus: action.payload, paymentError: null };
+
     case 'SET_PAYMENT_ERROR':
       return { ...state, paymentError: action.payload };
+
+    case 'SET_POST_LOGIN_REDIRECT':
+      return { ...state, postLoginRedirect: action.payload };
 
     case 'MARK_WHATSAPP_SENT':
       return { ...state, whatsAppMockSent: true };
@@ -141,8 +168,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (target: Screen) => {
       // Navigation guards
       if (target === 'schedule' && !state.bookingType)           return;
-      if (target === 'success')                                   return; // only via payment
+      if (target === 'terms' && (!state.selectedDate || !state.selectedTime)) return;
+      if (target === 'booking-confirmation' && state.screen !== 'checkout')    return; // only via payment flow
       if (target === 'checkout' && !state.isLoggedIn) {
+        dispatch({ type: 'SET_POST_LOGIN_REDIRECT', payload: 'checkout' });
+        dispatch({ type: 'SET_SCREEN', payload: 'login' });
+        return;
+      }
+      if (target === 'bookings' && !state.isLoggedIn) {
+        dispatch({ type: 'SET_POST_LOGIN_REDIRECT', payload: 'bookings' });
         dispatch({ type: 'SET_SCREEN', payload: 'login' });
         return;
       }
@@ -150,11 +184,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       dispatch({ type: 'SET_SCREEN', payload: target });
     },
-    [state.bookingType, state.isLoggedIn, state.selectedDate, state.selectedTime]
+    [state.bookingType, state.isLoggedIn, state.selectedDate, state.selectedTime, state.screen]
   );
 
   const goBack = useCallback(() => {
-    const order: Screen[] = ['home', 'schedule', 'login', 'checkout', 'success'];
+    const order: Screen[] = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'terms', 'login', 'checkout', 'booking-confirmation', 'bookings'];
     const idx = order.indexOf(state.screen);
     if (idx <= 0) return;
 

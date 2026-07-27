@@ -1,16 +1,18 @@
+import { FaWalking, FaArrowRight, FaRegUser } from 'react-icons/fa';
+import { Button } from '@/components/ui/button';
 import { useApp, useSelectBookingType } from '@/context/AppContext';
 import { announce } from '@/lib/utils';
-import homeBackground from '@/assets/home_bk.jpeg';
+import homeBackground from '@/assets/home_bk.png';
 
 export default function HomeScreen() {
   const { navigate } = useApp();
   const selectType = useSelectBookingType();
 
   function handleGetStarted() {
-    // Keep existing booking flow intact by selecting a default type before scheduling.
+    // Preselect the default booking type, then let user pick a sport on page 2.
     selectType('court');
-    announce('Get Started selected. Court rental preselected.');
-    navigate('schedule');
+    announce('Get Started selected. Choose your sport.');
+    navigate('sport-select');
   }
 
   function handleLogin() {
@@ -19,24 +21,35 @@ export default function HomeScreen() {
   }
 
   return (
-    <div className="home-splash screen-enter">
+    <div className="home-splash screen-fade-enter">
       <div className="home-splash-frame" role="img" aria-label="SportyGo home background image">
         <img src={homeBackground} alt="SportyGo Play Learn Grow home screen" className="home-splash-image" />
 
-        {/* Transparent hotspots keep the visual identical to the reference image. */}
-        <button
-          type="button"
+        <Button
           className="home-hotspot home-hotspot-start"
-          aria-label="Get Started"
+          variant="secondary"
           onClick={handleGetStarted}
-        />
+        >
+          <FaWalking className="home-hotspot-walk-icon" color="#ffffff" aria-hidden="true" />
+          <span className="home-hotspot-label">Get Started</span>
+          <FaArrowRight className="home-hotspot-arrow" color="#ffffff" aria-hidden="true" />
+        </Button>
 
-        <button
-          type="button"
-          className="home-hotspot home-hotspot-login"
+        <Button
+          className="home-hotspot home-hotspot-login home-hotspot-login-btn"
+          variant="secondary"
           aria-label="Log In"
           onClick={handleLogin}
-        />
+        >
+          <FaRegUser  className="home-hotspot-login-icon" color="#ffffff" aria-hidden="true" />
+          <span className="home-hotspot-label">Log In</span>
+          <FaArrowRight className="home-hotspot-arrow" color="#ffffff" aria-hidden="true" />
+        </Button>
+
+        <div className="home-join-line" aria-label="Join the movement">
+          <span>Join the movement.</span>
+          <span className="home-join-heart" aria-hidden="true">❤</span>
+        </div>
       </div>
     </div>
   );
