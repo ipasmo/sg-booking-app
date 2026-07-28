@@ -16,10 +16,41 @@ dotenv.config();
 const app  = express();
 const PORT = parseInt(process.env.PORT ?? '3001', 10);
 
+function parseAllowedOrigins(): string[] {
+  const single = process.env.FRONTEND_URL ?? '';
+  const multi = process.env.FRONTEND_URLS ?? '';
+  const combined = [single, multi].filter(Boolean).join(',');
+
+  return combined
+    .split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+}
+
+const allowedOrigins = parseAllowedOrigins();
+
 // ── Security middleware ───────────────────────────────────────
 app.use(helmet());
 app.use(cors({
-  origin: process.env.FRONTEND_URL ?? 'http://localhost:5173',
+  origin: (origin, callback) => {
+    // Allow non-browser requests and same-origin server-to-server checks.
+    if (!origin) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.length === 0) {
+      callback(null, true);
+      return;
+    }
+
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+      return;
+    }
+
+    callback(new Error(`CORS blocked for origin: ${origin}`));
+  },
   methods: ['GET', 'POST'],
   allowedHeaders: ['Content-Type', 'Authorization'],
 }));
@@ -52,5 +83,5 @@ app.use((_req, res) => {
 // ── Start server ──────────────────────────────────────────────
 app.listen(PORT, () => {
   console.log(`[backend] Listening on http://localhost:${PORT}`);
-  console.log(`[backend] Accepting requests from: ${process.env.FRONTEND_URL ?? 'http://localhost:5173'}`);
+  console.log(`[backend] Accepting requests from: ${allowedOrigins.length > 0 ? allowedOrigins.join(', ') : 'all origins (no FRONTEND_URL/FRONTEND_URLS configured)'}`);
 });
