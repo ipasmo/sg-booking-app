@@ -6,7 +6,7 @@ import React, {
   type ReactNode,
 } from 'react';
 import type { Action, AppState, Screen, BookingType, PayMethod } from '@/types';
-import { calcPricing } from '@/lib/pricing';
+import { calcPricing, parseRate } from '@/lib/pricing';
 import { PLATFORM_FEE } from '@/lib/constants';
 
 // ─────────────────────────────────────────────────────────────
@@ -82,7 +82,8 @@ function reducer(state: AppState, action: Action): AppState {
       return { ...state, selectedTime: action.payload };
 
     case 'SET_DURATION': {
-      const pricing = calcPricing('court', action.payload, null);
+      const ratePerHour = parseRate(state.selectedFacility?.price);
+      const pricing = calcPricing('court', action.payload, null, ratePerHour);
       return { ...state, durationMins: action.payload, ...pricing };
     }
 

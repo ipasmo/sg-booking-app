@@ -3,7 +3,7 @@ import { ArrowRight, CalendarDays, Check, ChevronDown, Clock3, Lock, MapPin } fr
 import { useApp, useSelectPayMethod } from '@/context/AppContext';
 import { createBooking } from '@/lib/api';
 import { PACKAGES, PLATFORM_FEE } from '@/lib/constants';
-import { calcPricing, sgd } from '@/lib/pricing';
+import { calcPricing, parseRate, sgd } from '@/lib/pricing';
 import { formatDateShort, makeReceiptId, announce } from '@/lib/utils';
 import type { PayMethod } from '@/types';
 import ErrorBanner from '@/components/ErrorBanner';
@@ -72,8 +72,9 @@ export default function CheckoutScreen() {
     if (!state.bookingType) {
       return { priceSubtotal: 0, tax: 0, platformFee: PLATFORM_FEE, grandTotal: 0 };
     }
-    return calcPricing(state.bookingType, state.durationMins, state.packageOption);
-  }, [state.bookingType, state.durationMins, state.packageOption]);
+    const ratePerHour = parseRate(state.selectedFacility?.price);
+    return calcPricing(state.bookingType, state.durationMins, state.packageOption, ratePerHour);
+  }, [state.bookingType, state.durationMins, state.packageOption, state.selectedFacility?.price]);
 
   const coachingReady = isCoaching ? !!state.packageOption : true;
   const canPay = !!state.payMethod && coachingReady && pricing.grandTotal > 0 && !paying;
