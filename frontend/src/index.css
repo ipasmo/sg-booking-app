@@ -2473,9 +2473,9 @@ input { font-family: inherit; }
   gap: 10px;
 }
 .login-social-btn {
-  border-radius: 12px;
+  border-radius: 999px;
   border: 1px solid rgba(212, 165, 86, 0.45);
-  background: rgba(8, 22, 49, 0.9);
+  background: transparent;
   color: #f0f4fa;
   min-height: 46px;
   display: inline-flex;
@@ -2485,8 +2485,23 @@ input { font-family: inherit; }
   font-size: 0.92rem;
   font-weight: 600;
 }
+.login-social-btn:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(212, 165, 86, 0.72);
+}
+.login-social-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
 .login-social-btn svg {
   font-size: 1.2rem;
+  color: #f0f4fa;
+}
+.login-google-brand-icon {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 .login-signup-note {
   margin-top: 16px;
