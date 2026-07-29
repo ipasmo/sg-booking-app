@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { ArrowRight, Eye, EyeOff, Lock, Mail } from 'lucide-react';
-import { FaApple, FaGoogle } from 'react-icons/fa';
+import { FaApple } from 'react-icons/fa';
 import { useApp } from '@/context/AppContext';
 import { loginUser, loginWithGoogle } from '@/lib/api';
 import { getGoogleCredential } from '@/lib/googleIdentity';
@@ -9,6 +9,7 @@ import ErrorBanner from '@/components/ErrorBanner';
 import Spinner from '@/components/Spinner';
 import logoImage from '@/assets/logo.png';
 import loginBackground from '@/assets/home_bk.png';
+import googleBrandIcon from '@/assets/g_login.svg';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -175,7 +176,7 @@ export default function LoginScreen() {
           <div className="login-social-title">Continue with</div>
           <div className="login-social-row">
             <button type="button" className="login-social-btn" onClick={handleGoogleLogin} disabled={googleLoading}>
-              <FaGoogle />
+              <img src={googleBrandIcon} alt="" aria-hidden="true" className="login-google-brand-icon" />
               <span>{googleLoading ? 'Connecting...' : 'Google'}</span>
             </button>
             <button type="button" className="login-social-btn">
