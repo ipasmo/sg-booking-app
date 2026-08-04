@@ -24,6 +24,15 @@ import cricketCard from '@/assets/card_cricket.png';
 import cricketGear from '@/assets/cricket_gear.png';
 import type { BookingHistoryItem } from '@/types';
 
+const FACILITY_IMAGES = {
+  'bowling-lane': cricketFacilityImage,
+  'nets-2': indoorCricketCard,
+  'nets-3': cricketCard,
+  'nets-4': indoorCricketCard,
+  'indoor-court': cricketGear,
+  'outdoor-field': cricketFacilityImage,
+} as const;
+
 type BookingTab = 'upcoming' | 'previous';
 
 type BookingCard = {
@@ -38,6 +47,24 @@ type BookingCard = {
   tags: [string, string];
   image: string;
 };
+
+function currentSingaporeDateTimeKey(): string {
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Singapore',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(new Date()).map((part) => [part.type, part.value]));
+
+  return `${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}`;
+}
+
+function bookingDateTimeKey(item: BookingHistoryItem): string {
+  return `${item.slotDate}T${item.slotTime.slice(0, 5)}`;
+}
 
 function to12Hour(time: string): string {
   const [h, m] = time.split(':').map(Number);
@@ -60,77 +87,27 @@ function formatDateForCard(date: string): string {
 
 function mapHistoryToCard(item: BookingHistoryItem): BookingCard {
   const isCoaching = item.bookingType === 'coaching';
+  const isPast = bookingDateTimeKey(item) < currentSingaporeDateTimeKey();
   const start = item.slotTime.slice(0, 5);
   const end = addMinutes(start, item.durationMins);
-  const statusLabel = item.status === 'confirmed' ? 'Upcoming' : 'Pending Cash';
+  const statusLabel = item.status === 'cash_pending' ? 'Pending Cash' : isPast ? 'Completed' : 'Upcoming';
+  const fallbackTitle = isCoaching ? 'Coaching Session' : 'Cricket Net 2';
+  const fallbackLocation = 'Kallang, Singapore';
+  const fallbackTags: [string, string] = isCoaching ? ['Coaching', 'Package'] : ['Indoor', 'Net Lane'];
 
   return {
     id: item.receiptId,
-    title: isCoaching ? 'Coaching Session' : 'Cricket Net 2',
-    location: 'Kallang, Singapore',
+    title: item.facilityTitle ?? fallbackTitle,
+    location: item.facilityAddress ?? fallbackLocation,
     dateText: formatDateForCard(item.slotDate),
     timeText: `${to12Hour(start)} - ${to12Hour(end)} (${item.durationMins} min)`,
     amount: `S$${item.grandTotal.toFixed(2)}`,
     statusLabel,
-    statusType: 'upcoming',
-    tags: isCoaching ? ['Coaching', 'Package'] : ['Indoor', 'Net Lane'],
-    image: isCoaching ? cricketGear : indoorCricketCard,
+    statusType: isPast ? 'completed' : 'upcoming',
+    tags: item.facilityTag ? [isCoaching ? 'Coaching' : 'Facility', item.facilityTag] : fallbackTags,
+    image: item.facilityImageKey ? FACILITY_IMAGES[item.facilityImageKey] : isCoaching ? cricketGear : indoorCricketCard,
   };
 }
-
-const UPCOMING_BOOKINGS: BookingCard[] = [
-  {
-    id: 'SG2505241827',
-    title: 'Cricket Net 2',
-    location: 'Kallang, Singapore',
-    dateText: '24 May 2025, Sat',
-    timeText: '06:00 PM - 07:00 PM (60 min)',
-    amount: 'S$45.00',
-    statusLabel: 'Upcoming',
-    statusType: 'upcoming',
-    tags: ['Indoor', 'Net Lane'],
-    image: indoorCricketCard,
-  },
-  {
-    id: 'SG2505312890',
-    title: 'Outdoor Cricket Field',
-    location: 'Yishun, Singapore',
-    dateText: '31 May 2025, Sat',
-    timeText: '04:00 PM - 06:00 PM (120 min)',
-    amount: 'S$100.00',
-    statusLabel: 'Upcoming',
-    statusType: 'upcoming',
-    tags: ['Outdoor', 'Field'],
-    image: cricketFacilityImage,
-  },
-];
-
-const PREVIOUS_BOOKINGS: BookingCard[] = [
-  {
-    id: 'SG2505188772',
-    title: 'Cricket Net 3',
-    location: 'Kallang, Singapore',
-    dateText: '18 May 2025, Sun',
-    timeText: '08:00 PM - 09:00 PM (60 min)',
-    amount: 'S$45.00',
-    statusLabel: 'Completed',
-    statusType: 'completed',
-    tags: ['Indoor', 'Net Lane'],
-    image: cricketCard,
-  },
-  {
-    id: 'SG2505108128',
-    title: 'Indoor Cricket Court',
-    location: 'Kallang, Singapore',
-    dateText: '10 May 2025, Sat',
-    timeText: '07:00 PM - 09:00 PM (120 min)',
-    amount: 'S$140.00',
-    statusLabel: 'Completed',
-    statusType: 'completed',
-    tags: ['Indoor', 'Court'],
-    image: cricketGear,
-  },
-];
 
 function BookingCardView({ booking, showActions }: { booking: BookingCard; showActions: boolean }) {
   function copyId() {
@@ -189,12 +166,12 @@ function BookingCardView({ booking, showActions }: { booking: BookingCard; showA
   );
 }
 
-export default function BookingsScreen() {
+export default function ViewBookingsScreen() {
   const { navigate, state } = useApp();
   const [tab, setTab] = useState<BookingTab>('upcoming');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [historyCards, setHistoryCards] = useState<BookingCard[]>([]);
+  const [historyItems, setHistoryItems] = useState<BookingHistoryItem[]>([]);
 
   useEffect(() => {
     if (!state.authToken) return;
@@ -206,7 +183,7 @@ export default function BookingsScreen() {
     fetchMyBookings(state.authToken)
       .then((response) => {
         if (cancelled) return;
-        setHistoryCards(response.bookings.map(mapHistoryToCard));
+        setHistoryItems(response.bookings);
       })
       .catch((err) => {
         if (cancelled) return;
@@ -223,11 +200,13 @@ export default function BookingsScreen() {
   }, [state.authToken]);
 
   const activeList = useMemo(() => {
-    if (historyCards.length > 0) {
-      return tab === 'upcoming' ? historyCards : [];
-    }
-    return tab === 'upcoming' ? UPCOMING_BOOKINGS : PREVIOUS_BOOKINGS;
-  }, [historyCards, tab]);
+    const currentKey = currentSingaporeDateTimeKey();
+    return historyItems
+      .filter((item) => tab === 'upcoming'
+        ? bookingDateTimeKey(item) >= currentKey
+        : bookingDateTimeKey(item) < currentKey)
+      .map(mapHistoryToCard);
+  }, [historyItems, tab]);
 
   return (
     <div className="page-container page-container--immersive screen-fade-enter">
@@ -278,6 +257,10 @@ export default function BookingsScreen() {
           {loading ? (
             <div className="bookings-list-v2">
               <Spinner />
+            </div>
+          ) : activeList.length === 0 ? (
+            <div className="bookings-list-v2">
+              <p>{tab === 'upcoming' ? 'No upcoming bookings yet.' : 'No previous bookings yet.'}</p>
             </div>
           ) : (
             <div className="bookings-list-v2">

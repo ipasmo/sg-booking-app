@@ -2,7 +2,7 @@
 // Shared application types
 // ─────────────────────────────────────────────────────────────
 
-export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'terms' | 'login' | 'checkout' | 'booking-confirmation' | 'bookings';
+export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'terms' | 'login' | 'forgot-password' | 'checkout' | 'booking-confirmation' | 'bookings';
 export type SportId = 'cricket' | 'indoor-cricket' | 'pickleball' | 'soccer' | 'volleyball' | 'badminton' | 'basketball' | 'kabaddi';
 export type SportImageKey = SportId;
 export type BookingType = 'court' | 'coaching';
@@ -151,11 +151,22 @@ export interface BookingPayload {
   grandTotal: number;
   receiptId: string;
   customerEmail: string;
+  facilityTitle: string | null;
+  facilityAddress: string | null;
+  facilityImageKey: SportFacilityImageKey | null;
+  facilityTag: string | null;
 }
 
 export interface LoginResponse {
   token: string;
   email: string;
+}
+
+export interface RegisterPayload {
+  name: string;
+  mobileNumber: string;
+  email: string;
+  password: string;
 }
 
 export interface SlotsResponse {
@@ -191,6 +202,10 @@ export interface BookingHistoryItem {
   grandTotal: number;
   status: 'confirmed' | 'cash_pending';
   paymentMethod: 'ONLINE' | 'CASH';
+  facilityTitle: string | null;
+  facilityAddress: string | null;
+  facilityImageKey: SportFacilityImageKey | null;
+  facilityTag: string | null;
 }
 
 export interface BookingHistoryResponse {

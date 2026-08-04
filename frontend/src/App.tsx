@@ -7,14 +7,15 @@ import SportFacilityScreen from '@/screens/SportFacilityScreen';
 import SlotBookingScreen from '@/screens/SlotBookingScreen';
 import TermsScreen from '@/screens/TermsScreen';
 import LoginScreen from '@/screens/LoginScreen';
+import ForgotPasswordScreen from '@/screens/ForgotPasswordScreen';
 import CheckoutScreen from '@/screens/CheckoutScreen';
 import BookingConfirmationScreen from '@/screens/BookingConfirmationScreen';
-import BookingsScreen from '@/screens/BookingsScreen';
+import ViewBookingsScreen from '@/screens/ViewBookingsScreen';
 
 export default function App() {
   const { state } = useApp();
-  const isImmersiveScreen = state.screen === 'home' || state.screen === 'sport-select' || state.screen === 'sport-events' || state.screen === 'facility-select' || state.screen === 'schedule' || state.screen === 'terms' || state.screen === 'login' || state.screen === 'checkout' || state.screen === 'booking-confirmation' || state.screen === 'bookings';
-  const topAlignedImmersive = state.screen === 'schedule' || state.screen === 'terms' || state.screen === 'checkout' || state.screen === 'booking-confirmation' || state.screen === 'bookings';
+  const isImmersiveScreen = state.screen === 'home' || state.screen === 'sport-select' || state.screen === 'sport-events' || state.screen === 'facility-select' || state.screen === 'schedule' || state.screen === 'terms' || state.screen === 'login' || state.screen === 'forgot-password' || state.screen === 'checkout' || state.screen === 'booking-confirmation' || state.screen === 'bookings';
+  const topAlignedImmersive = state.screen === 'schedule' || state.screen === 'terms' || state.screen === 'forgot-password' || state.screen === 'checkout' || state.screen === 'booking-confirmation' || state.screen === 'bookings';
 
   return (
     <div className={`app-shell${isImmersiveScreen ? ' home-mode' : ''}${topAlignedImmersive ? ' immersive-top' : ''}`}>
@@ -30,9 +31,10 @@ export default function App() {
       {state.screen === 'schedule' && <SlotBookingScreen />}
       {state.screen === 'terms' && <TermsScreen />}
       {state.screen === 'login'    && <LoginScreen />}
+      {state.screen === 'forgot-password' && <ForgotPasswordScreen />}
       {state.screen === 'checkout' && <CheckoutScreen />}
       {state.screen === 'booking-confirmation'  && <BookingConfirmationScreen />}
-      {state.screen === 'bookings' && <BookingsScreen />}
+      {state.screen === 'bookings' && <ViewBookingsScreen />}
     </div>
   );
 }

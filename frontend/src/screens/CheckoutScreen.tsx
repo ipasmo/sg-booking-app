@@ -124,6 +124,10 @@ export default function CheckoutScreen() {
           grandTotal:    pricing.grandTotal,   // always use derived, never stale state
           receiptId,
           customerEmail: state.customerEmail,
+          facilityTitle: state.selectedFacility?.title ?? null,
+          facilityAddress: state.selectedFacility?.address ?? null,
+          facilityImageKey: state.selectedFacility?.imageKey ?? null,
+          facilityTag: state.selectedFacility?.tag ?? null,
         },
         state.authToken
       );
@@ -218,11 +222,9 @@ export default function CheckoutScreen() {
                 </span>
                 {timeRange}
               </p>
-              <p>
-                <div className="checkout-summary-price-v2">
-                  <strong>{sgd(pricing.grandTotal).replace('SGD', 'S$')} <span>(Incl. taxes)</span></strong>
-                </div>
-              </p>
+              <div className="checkout-summary-price-v2">
+                <strong>{sgd(pricing.grandTotal).replace('SGD', 'S$')} <span>(Incl. taxes)</span></strong>
+              </div>
               <div className="checkout-summary-tags-v2">
                 <span>{bookingTypeTag}</span>
                 <span>{durationTag}</span>

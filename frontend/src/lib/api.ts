@@ -3,6 +3,7 @@ import type {
   BookingPayload,
   BookingResponse,
   LoginResponse,
+  RegisterPayload,
   SlotsResponse,
   SportFacilitiesResponse,
   SportFacilityTemplate,
@@ -13,6 +14,7 @@ import type {
   SportOption,
 } from '@/types';
 import { markLocalBooked, mergeWithLocalBooked } from './localBookedSlots';
+import { encryptPasswordForTransport } from './authCrypto';
 import fallbackSports from '@/data/json/sports.json';
 import fallbackSportEvents from '@/data/json/sport-events.json';
 import fallbackSportFacilities from '@/data/json/sport-facilities.json';
@@ -129,17 +131,58 @@ async function request<T>(
 
 // ─── Auth ─────────────────────────────────────────────────────
 
-export async function loginUser(email: string, password: string): Promise<LoginResponse> {
+export async function loginUser(loginId: string, password: string): Promise<LoginResponse> {
+  const encryptedPassword = await encryptPasswordForTransport(password);
+
   return request<LoginResponse>('/api/auth/login', {
     method: 'POST',
-    body: JSON.stringify({ email, password }),
+    body: JSON.stringify({ loginId, encryptedPassword }),
   });
 }
 
-export async function loginWithGoogle(credential: string): Promise<LoginResponse> {
-  return request<LoginResponse>('/api/auth/google', {
+export async function registerUser(payload: RegisterPayload): Promise<LoginResponse> {
+  const encryptedPassword = await encryptPasswordForTransport(payload.password);
+
+  return request<LoginResponse>('/api/auth/register', {
     method: 'POST',
-    body: JSON.stringify({ credential }),
+    body: JSON.stringify({
+      email: payload.email,
+      name: payload.name,
+      mobileNumber: payload.mobileNumber,
+      encryptedPassword,
+    }),
+  });
+}
+
+export async function resetPassword(loginId: string, password: string): Promise<{ message: string }> {
+  const encryptedPassword = await encryptPasswordForTransport(password);
+
+  return request<{ message: string }>('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ loginId, encryptedPassword }),
+  });
+}
+
+export async function requestPasswordResetCode(email: string): Promise<{ message: string }> {
+  return request<{ message: string }>('/api/auth/forgot-password/request', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  });
+}
+
+export async function verifyPasswordResetCode(email: string, code: string): Promise<{ message: string }> {
+  return request<{ message: string }>('/api/auth/forgot-password/verify', {
+    method: 'POST',
+    body: JSON.stringify({ email, code }),
+  });
+}
+
+export async function resetPasswordWithCode(email: string, code: string, password: string): Promise<{ message: string }> {
+  const encryptedPassword = await encryptPasswordForTransport(password);
+
+  return request<{ message: string }>('/api/auth/forgot-password/reset', {
+    method: 'POST',
+    body: JSON.stringify({ email, code, encryptedPassword }),
   });
 }
 

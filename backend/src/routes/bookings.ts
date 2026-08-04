@@ -1,9 +1,26 @@
 import { Router } from 'express';
 import { authMiddleware, type AuthenticatedRequest } from '../middleware/authMiddleware';
-import { listBookingsByCustomer, saveBooking, SlotAlreadyBookedError } from '../lib/database';
+import { listBookingsByCustomer, saveBooking, SlotAlreadyBookedError, type SportFacilityRow } from '../lib/database';
 
 const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const FACILITY_IMAGE_KEYS = new Set<SportFacilityRow['imageKey']>([
+  'bowling-lane',
+  'nets-2',
+  'nets-3',
+  'nets-4',
+  'indoor-court',
+  'outdoor-field',
+]);
+
+function toFacilityImageKey(value: string | null | undefined): SportFacilityRow['imageKey'] | null {
+  const normalized = value?.trim();
+  if (!normalized || !FACILITY_IMAGE_KEYS.has(normalized as SportFacilityRow['imageKey'])) {
+    return null;
+  }
+
+  return normalized as SportFacilityRow['imageKey'];
+}
 
 // GET /api/bookings  (requires Bearer token)
 router.get('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
@@ -22,6 +39,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
   const {
     bookingType, selectedDate, selectedTime, durationMins,
     packageOption, payMethod, grandTotal, receiptId, customerEmail: bodyCustomerEmail,
+    facilityTitle, facilityAddress, facilityImageKey, facilityTag,
   } = req.body as {
     bookingType: string;
     selectedDate: string;
@@ -32,6 +50,10 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     grandTotal: number;
     receiptId: string;
     customerEmail?: string;
+    facilityTitle?: string | null;
+    facilityAddress?: string | null;
+    facilityImageKey?: string | null;
+    facilityTag?: string | null;
   };
 
   const customerEmail = req.user?.email ?? bodyCustomerEmail;
@@ -74,6 +96,10 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
       customerEmail: resolvedCustomerEmail,
       bookingStatus,
       paymentMethod,
+      facilityTitle: facilityTitle?.trim() || null,
+      facilityAddress: facilityAddress?.trim() || null,
+      facilityImageKey: toFacilityImageKey(facilityImageKey),
+      facilityTag: facilityTag?.trim() || null,
     });
   } catch (error) {
     if (error instanceof SlotAlreadyBookedError) {

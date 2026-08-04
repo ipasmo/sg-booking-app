@@ -1,68 +1,282 @@
 import { Router } from 'express';
-import { OAuth2Client } from 'google-auth-library';
 import jwt from 'jsonwebtoken';
-import { upsertUserByEmail } from '../lib/database';
+import { completePasswordReset, createUserPasswordAccount, findUserByEmail, findUserByEmailOrMobile, savePasswordResetCode, verifyPasswordResetCode } from '../lib/database';
+import { decryptClientPasswordPayload, decryptPasswordAtRest, encryptPasswordAtRest } from '../lib/authCrypto';
+import { sendPasswordResetPasscode } from '../lib/email';
 
 const router = Router();
 
 const EMAIL_RE  = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const MOBILE_RE = /^\+?[0-9]{8,15}$/;
 const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-in-production';
-const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID ?? '';
-const googleClient = new OAuth2Client(GOOGLE_CLIENT_ID || undefined);
 
-router.post('/login', async (req, res) => {
-  const { email, password } = req.body as { email?: string; password?: string };
+function normalizeEmail(email: string): string {
+  return email.trim().toLowerCase();
+}
 
-  if (!email || !EMAIL_RE.test(email)) {
+router.post('/register', async (req, res) => {
+  const {
+    email,
+    name,
+    mobileNumber,
+    encryptedPassword,
+  } = req.body as {
+    email?: string;
+    name?: string;
+    mobileNumber?: string;
+    encryptedPassword?: string;
+  };
+
+  const normalizedEmail = normalizeEmail(email ?? '');
+  const normalizedName = (name ?? '').trim();
+  const normalizedMobile = (mobileNumber ?? '').trim();
+
+  if (!normalizedName || normalizedName.length < 2) {
+    res.status(400).json({ error: 'Name must be at least 2 characters.' });
+    return;
+  }
+
+  if (!normalizedMobile || !MOBILE_RE.test(normalizedMobile)) {
+    res.status(400).json({ error: 'Enter a valid mobile number.' });
+    return;
+  }
+
+  if (!normalizedEmail || !EMAIL_RE.test(normalizedEmail)) {
     res.status(400).json({ error: 'A valid email address is required.' });
     return;
   }
 
-  if (!password || password.length < 8) {
+  if (!encryptedPassword) {
+    res.status(400).json({ error: 'Encrypted password is required.' });
+    return;
+  }
+
+  let plainPassword = '';
+  try {
+    plainPassword = await decryptClientPasswordPayload(encryptedPassword);
+  } catch {
+    res.status(400).json({ error: 'Unable to decrypt password payload.' });
+    return;
+  }
+
+  if (plainPassword.length < 8) {
     res.status(400).json({ error: 'Password must be at least 8 characters.' });
     return;
   }
 
-  await upsertUserByEmail(email, 'password');
+  const storedEncryptedPassword = await encryptPasswordAtRest(plainPassword);
 
-  const token = jwt.sign({ email }, JWT_SECRET, { expiresIn: '24h' });
-  res.json({ token, email });
-});
+  try {
+    await createUserPasswordAccount({
+      email: normalizedEmail,
+      fullName: normalizedName,
+      mobileNumber: normalizedMobile,
+      passwordEncrypted: storedEncryptedPassword,
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Unable to create account.';
+    if (/already exists/i.test(message)) {
+      res.status(409).json({ error: 'An account with this email already exists.' });
+      return;
+    }
 
-router.post('/google', async (req, res) => {
-  const { credential } = req.body as { credential?: string };
-
-  if (!GOOGLE_CLIENT_ID) {
-    res.status(500).json({ error: 'Google authentication is not configured on the server.' });
+    res.status(500).json({ error: 'Unable to create account. Please try again.' });
     return;
   }
 
-  if (!credential) {
-    res.status(400).json({ error: 'Google credential token is required.' });
+  const token = jwt.sign({ email: normalizedEmail }, JWT_SECRET, { expiresIn: '24h' });
+  res.status(201).json({ token, email: normalizedEmail });
+});
+
+router.post('/login', async (req, res) => {
+  const {
+    email,
+    loginId,
+    encryptedPassword,
+  } = req.body as {
+    email?: string;
+    loginId?: string;
+    encryptedPassword?: string;
+  };
+
+  const normalizedLoginId = (loginId ?? email ?? '').trim().toLowerCase();
+
+  if (!normalizedLoginId || (!EMAIL_RE.test(normalizedLoginId) && !MOBILE_RE.test(normalizedLoginId))) {
+    res.status(400).json({ error: 'A valid email address or mobile number is required.' });
+    return;
+  }
+
+  if (!encryptedPassword) {
+    res.status(400).json({ error: 'Encrypted password is required.' });
+    return;
+  }
+
+  let incomingPlainPassword = '';
+  try {
+    incomingPlainPassword = await decryptClientPasswordPayload(encryptedPassword);
+  } catch {
+    res.status(400).json({ error: 'Unable to decrypt password payload.' });
+    return;
+  }
+
+  if (incomingPlainPassword.length < 8) {
+    res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    return;
+  }
+
+  const user = await findUserByEmailOrMobile(normalizedLoginId);
+  if (!user || !user.passwordEncrypted) {
+    res.status(401).json({ error: 'Invalid email/mobile number or password.' });
+    return;
+  }
+
+  let storedPlainPassword = '';
+  try {
+    storedPlainPassword = await decryptPasswordAtRest(user.passwordEncrypted);
+  } catch {
+    res.status(500).json({ error: 'Unable to verify account password.' });
+    return;
+  }
+
+  if (storedPlainPassword !== incomingPlainPassword) {
+    res.status(401).json({ error: 'Invalid email/mobile number or password.' });
+    return;
+  }
+
+  const token = jwt.sign({ email: user.email }, JWT_SECRET, { expiresIn: '24h' });
+  res.json({ token, email: user.email });
+});
+
+router.post('/forgot-password/request', async (req, res) => {
+  const {
+    email,
+  } = req.body as {
+    email?: string;
+  };
+
+  const normalizedEmail = normalizeEmail(email ?? '');
+
+  if (!normalizedEmail || !EMAIL_RE.test(normalizedEmail)) {
+    res.status(400).json({ error: 'A valid email address is required.' });
+    return;
+  }
+
+  const existingUser = await findUserByEmail(normalizedEmail);
+  if (!existingUser) {
+    res.status(404).json({ error: 'No account found for that email address.' });
+    return;
+  }
+
+  const code = String(Math.floor(100000 + Math.random() * 900000));
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+
+  const saved = await savePasswordResetCode({
+    email: normalizedEmail,
+    code,
+    expiresAtIso: expiresAt,
+  });
+
+  if (!saved) {
+    res.status(500).json({ error: 'Unable to prepare reset passcode. Please try again.' });
     return;
   }
 
   try {
-    const ticket = await googleClient.verifyIdToken({
-      idToken: credential,
-      audience: GOOGLE_CLIENT_ID,
-    });
-
-    const payload = ticket.getPayload();
-    const email = payload?.email;
-
-    if (!email || !EMAIL_RE.test(email)) {
-      res.status(400).json({ error: 'Unable to verify Google account email.' });
-      return;
-    }
-
-    await upsertUserByEmail(email, 'google');
-
-    const token = jwt.sign({ email, provider: 'google' }, JWT_SECRET, { expiresIn: '24h' });
-    res.json({ token, email });
+    await sendPasswordResetPasscode({ email: normalizedEmail, code });
   } catch {
-    res.status(401).json({ error: 'Google sign-in failed. Please try again.' });
+    res.status(500).json({ error: 'Unable to send reset passcode email. Please try again.' });
+    return;
   }
+
+  res.json({ message: 'A 6-digit passcode has been sent to your email address.' });
+});
+
+router.post('/forgot-password/verify', async (req, res) => {
+  const {
+    email,
+    code,
+  } = req.body as {
+    email?: string;
+    code?: string;
+  };
+
+  const normalizedEmail = normalizeEmail(email ?? '');
+  const normalizedCode = (code ?? '').trim();
+
+  if (!normalizedEmail || !EMAIL_RE.test(normalizedEmail)) {
+    res.status(400).json({ error: 'A valid email address is required.' });
+    return;
+  }
+
+  if (!/^\d{6}$/.test(normalizedCode)) {
+    res.status(400).json({ error: 'Enter a valid 6-digit passcode.' });
+    return;
+  }
+
+  const matches = await verifyPasswordResetCode({ email: normalizedEmail, code: normalizedCode });
+  if (!matches) {
+    res.status(400).json({ error: 'The passcode is invalid or has expired.' });
+    return;
+  }
+
+  res.json({ message: 'Passcode verified successfully.' });
+});
+
+router.post('/forgot-password/reset', async (req, res) => {
+  const {
+    email,
+    code,
+    encryptedPassword,
+  } = req.body as {
+    email?: string;
+    code?: string;
+    encryptedPassword?: string;
+  };
+
+  const normalizedEmail = normalizeEmail(email ?? '');
+  const normalizedCode = (code ?? '').trim();
+
+  if (!normalizedEmail || !EMAIL_RE.test(normalizedEmail)) {
+    res.status(400).json({ error: 'A valid email address is required.' });
+    return;
+  }
+
+  if (!/^\d{6}$/.test(normalizedCode)) {
+    res.status(400).json({ error: 'Enter a valid 6-digit passcode.' });
+    return;
+  }
+
+  if (!encryptedPassword) {
+    res.status(400).json({ error: 'Encrypted password is required.' });
+    return;
+  }
+
+  let plainPassword = '';
+  try {
+    plainPassword = await decryptClientPasswordPayload(encryptedPassword);
+  } catch {
+    res.status(400).json({ error: 'Unable to decrypt password payload.' });
+    return;
+  }
+
+  if (plainPassword.length < 8) {
+    res.status(400).json({ error: 'Password must be at least 8 characters.' });
+    return;
+  }
+
+  const passwordEncrypted = await encryptPasswordAtRest(plainPassword);
+  const updatedUser = await completePasswordReset({
+    email: normalizedEmail,
+    code: normalizedCode,
+    passwordEncrypted,
+  });
+
+  if (!updatedUser) {
+    res.status(400).json({ error: 'Unable to reset password. The passcode may be invalid or expired.' });
+    return;
+  }
+
+  res.json({ message: 'Password reset successful.' });
 });
 
 export default router;
