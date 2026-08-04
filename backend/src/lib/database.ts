@@ -1,5 +1,6 @@
 import dotenv from 'dotenv';
 import { Pool, type PoolClient, type QueryResultRow } from 'pg';
+import { encryptPasswordAtRest } from './authCrypto';
 import DEFAULT_SPORTS from '../data/json/sports.json';
 import DEFAULT_SPORT_EVENTS from '../data/json/sport-events.json';
 import DEFAULT_SPORT_FACILITIES from '../data/json/sport-facilities.json';
@@ -74,6 +75,10 @@ export type BookingHistoryRow = {
   grandTotal: number;
   status: 'confirmed' | 'cash_pending';
   paymentMethod: 'ONLINE' | 'CASH';
+  facilityTitle: string | null;
+  facilityAddress: string | null;
+  facilityImageKey: SportFacilityRow['imageKey'] | null;
+  facilityTag: string | null;
 };
 
 type BookingInput = {
@@ -88,6 +93,21 @@ type BookingInput = {
   customerEmail: string;
   bookingStatus: string;
   paymentMethod: 'ONLINE' | 'CASH';
+  facilityTitle?: string | null;
+  facilityAddress?: string | null;
+  facilityImageKey?: SportFacilityRow['imageKey'] | null;
+  facilityTag?: string | null;
+};
+
+export type UserAuthRow = {
+  id: string;
+  email: string;
+  fullName: string;
+  mobileNumber: string;
+  passwordEncrypted: string;
+  authProvider: 'password' | 'google';
+  passwordResetCode?: string | null;
+  passwordResetExpiresAt?: string | null;
 };
 
 export class SlotAlreadyBookedError extends Error {
@@ -102,6 +122,9 @@ const DATABASE_SSL = (process.env.DATABASE_SSL ?? 'true').toLowerCase() !== 'fal
 const DATABASE_CONNECTION_TIMEOUT_MS = Number(process.env.DATABASE_CONNECTION_TIMEOUT_MS ?? '5000');
 const DATABASE_POOL_MAX = Number(process.env.DATABASE_POOL_MAX ?? '10');
 const DEMO_USER_EMAIL = process.env.DEMO_USER_EMAIL ?? 'contact@ipasmo.com';
+const DEMO_USER_MOBILE = process.env.DEMO_USER_MOBILE ?? '+6591234567';
+const DEMO_USER_NAME = process.env.DEMO_USER_NAME ?? 'Demo User';
+const DEMO_USER_PASSWORD = process.env.DEMO_USER_PASSWORD ?? 'Password@123';
 
 const USE_DATABASE = DATABASE_URL.trim().length > 0;
 
@@ -129,6 +152,7 @@ const DEFAULT_SPORT_EVENT_ROWS = DEFAULT_SPORT_EVENTS as SportEventRow[];
 const DEFAULT_SPORT_FACILITY_TEMPLATE_ROWS = DEFAULT_SPORT_FACILITIES as SportFacilityTemplateRow[];
 
 let bootstrapPromise: Promise<void> | null = null;
+const fallbackUsers = new Map<string, UserAuthRow>();
 
 function generateDailySlots(dateStr: string): SlotRow[] {
   const slots: SlotRow[] = [];
@@ -336,6 +360,11 @@ async function ensureSchema(client: PoolClient): Promise<void> {
     CREATE TABLE IF NOT EXISTS users (
       id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
       email TEXT NOT NULL UNIQUE,
+      full_name TEXT NOT NULL DEFAULT 'User',
+      mobile_number TEXT NOT NULL DEFAULT '+6500000000',
+      password_encrypted TEXT NOT NULL DEFAULT '',
+      password_reset_code TEXT NULL,
+      password_reset_expires_at TIMESTAMPTZ NULL,
       auth_provider TEXT NOT NULL DEFAULT 'password' CHECK (auth_provider IN ('password', 'google')),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
       updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -343,6 +372,56 @@ async function ensureSchema(client: PoolClient): Promise<void> {
       created_by TEXT NOT NULL DEFAULT 'system',
       updated_by TEXT NOT NULL DEFAULT 'system'
     )
+  `);
+
+  await client.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS full_name TEXT
+  `);
+
+  await client.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS mobile_number TEXT
+  `);
+
+  await client.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS password_encrypted TEXT
+  `);
+
+  await client.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS password_reset_code TEXT
+  `);
+
+  await client.query(`
+    ALTER TABLE users
+    ADD COLUMN IF NOT EXISTS password_reset_expires_at TIMESTAMPTZ
+  `);
+
+  await client.query(`
+    UPDATE users
+    SET full_name = COALESCE(NULLIF(full_name, ''), 'User'),
+        mobile_number = COALESCE(NULLIF(mobile_number, ''), '+6500000000'),
+        password_encrypted = COALESCE(password_encrypted, '')
+    WHERE full_name IS NULL
+       OR mobile_number IS NULL
+       OR password_encrypted IS NULL
+  `);
+
+  await client.query(`
+    ALTER TABLE users
+    ALTER COLUMN full_name SET NOT NULL
+  `);
+
+  await client.query(`
+    ALTER TABLE users
+    ALTER COLUMN mobile_number SET NOT NULL
+  `);
+
+  await client.query(`
+    ALTER TABLE users
+    ALTER COLUMN password_encrypted SET NOT NULL
   `);
 
   await client.query(`
@@ -523,6 +602,10 @@ async function ensureSchema(client: PoolClient): Promise<void> {
       grand_total NUMERIC(12,2) NOT NULL CHECK (grand_total >= 0),
       receipt_id TEXT NOT NULL UNIQUE,
       customer_email TEXT NOT NULL,
+      facility_title TEXT NULL,
+      facility_address TEXT NULL,
+      facility_image_key TEXT NULL,
+      facility_tag TEXT NULL,
       status TEXT NOT NULL CHECK (status IN ('confirmed', 'cash_pending')),
       payment_method TEXT NOT NULL CHECK (payment_method IN ('ONLINE', 'CASH')),
       created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -542,6 +625,11 @@ async function ensureSchema(client: PoolClient): Promise<void> {
     CREATE INDEX IF NOT EXISTS idx_bookings_slot_lookup
     ON bookings (slot_date, slot_time)
   `);
+
+  await client.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS facility_title TEXT NULL');
+  await client.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS facility_address TEXT NULL');
+  await client.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS facility_image_key TEXT NULL');
+  await client.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS facility_tag TEXT NULL');
 }
 
 export async function ensureDatabaseReady(): Promise<void> {
@@ -782,11 +870,15 @@ export async function saveBooking(input: BookingInput): Promise<void> {
            grand_total,
            receipt_id,
            customer_email,
+           facility_title,
+           facility_address,
+           facility_image_key,
+           facility_tag,
            status,
            payment_method,
            created_by,
            updated_by
-         ) VALUES ($1, $2, $3::time, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`,
+         ) VALUES ($1, $2, $3::time, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`,
         [
           input.bookingType,
           input.selectedDate,
@@ -797,6 +889,10 @@ export async function saveBooking(input: BookingInput): Promise<void> {
           input.grandTotal,
           input.receiptId,
           input.customerEmail,
+          input.facilityTitle ?? null,
+          input.facilityAddress ?? null,
+          input.facilityImageKey ?? null,
+          input.facilityTag ?? null,
           input.bookingStatus,
           input.paymentMethod,
           input.customerEmail,
@@ -825,6 +921,10 @@ export async function listBookingsByCustomer(customerEmail: string): Promise<Boo
        slot_time::text AS "slotTime",
        duration_mins AS "durationMins",
        grand_total::float8 AS "grandTotal",
+       facility_title AS "facilityTitle",
+       facility_address AS "facilityAddress",
+       facility_image_key AS "facilityImageKey",
+       facility_tag AS "facilityTag",
        status,
        payment_method AS "paymentMethod"
      FROM bookings
@@ -853,6 +953,271 @@ export async function upsertUserByEmail(email: string, provider: 'password' | 'g
   );
 }
 
+export async function findUserByEmail(email: string): Promise<UserAuthRow | null> {
+  if (!pool) {
+    return fallbackUsers.get(email.toLowerCase()) ?? null;
+  }
+
+  const rows = await query<UserAuthRow>(
+    `SELECT id,
+            email,
+            full_name AS "fullName",
+            mobile_number AS "mobileNumber",
+            password_encrypted AS "passwordEncrypted",
+            password_reset_code AS "passwordResetCode",
+            password_reset_expires_at::text AS "passwordResetExpiresAt",
+            auth_provider AS "authProvider"
+     FROM users
+     WHERE deleted_at IS NULL
+       AND LOWER(email) = LOWER($1)
+     LIMIT 1`,
+    [email]
+  );
+
+  return rows[0] ?? null;
+}
+
+export async function findUserByEmailOrMobile(loginId: string): Promise<UserAuthRow | null> {
+  const normalizedLoginId = loginId.trim().toLowerCase();
+
+  if (!pool) {
+    const fallbackByEmail = fallbackUsers.get(normalizedLoginId);
+    if (fallbackByEmail) {
+      return fallbackByEmail;
+    }
+
+    for (const user of fallbackUsers.values()) {
+      if (user.mobileNumber.trim().toLowerCase() === normalizedLoginId) {
+        return user;
+      }
+    }
+
+    return null;
+  }
+
+  const rows = await query<UserAuthRow>(
+    `SELECT id,
+            email,
+            full_name AS "fullName",
+            mobile_number AS "mobileNumber",
+            password_encrypted AS "passwordEncrypted",
+                 password_reset_code AS "passwordResetCode",
+                 password_reset_expires_at::text AS "passwordResetExpiresAt",
+            auth_provider AS "authProvider"
+     FROM users
+     WHERE deleted_at IS NULL
+       AND (
+         LOWER(email) = LOWER($1)
+         OR LOWER(mobile_number) = LOWER($1)
+       )
+     LIMIT 1`,
+    [normalizedLoginId]
+  );
+
+  return rows[0] ?? null;
+}
+
+export async function updateUserPasswordByEmailOrMobile(input: {
+  loginId: string;
+  passwordEncrypted: string;
+}): Promise<UserAuthRow | null> {
+  const normalizedLoginId = input.loginId.trim().toLowerCase();
+
+  if (!pool) {
+    const existing = await findUserByEmailOrMobile(normalizedLoginId);
+    if (!existing) {
+      return null;
+    }
+
+    const updated: UserAuthRow = {
+      ...existing,
+      passwordEncrypted: input.passwordEncrypted,
+      passwordResetCode: null,
+      passwordResetExpiresAt: null,
+    };
+
+    fallbackUsers.set(existing.email.toLowerCase(), updated);
+    return updated;
+  }
+
+  const rows = await query<UserAuthRow>(
+    `UPDATE users
+     SET password_encrypted = $2,
+         password_reset_code = NULL,
+         password_reset_expires_at = NULL,
+         updated_at = NOW(),
+         updated_by = COALESCE(NULLIF(email, ''), $1)
+     WHERE deleted_at IS NULL
+       AND (
+         LOWER(email) = LOWER($1)
+         OR LOWER(mobile_number) = LOWER($1)
+       )
+     RETURNING id,
+               email,
+               full_name AS "fullName",
+               mobile_number AS "mobileNumber",
+               password_encrypted AS "passwordEncrypted",
+               password_reset_code AS "passwordResetCode",
+               password_reset_expires_at::text AS "passwordResetExpiresAt",
+               auth_provider AS "authProvider"`,
+    [normalizedLoginId, input.passwordEncrypted]
+  );
+
+  return rows[0] ?? null;
+}
+
+export async function createUserPasswordAccount(input: {
+  email: string;
+  fullName: string;
+  mobileNumber: string;
+  passwordEncrypted: string;
+}): Promise<UserAuthRow> {
+  if (!pool) {
+    const key = input.email.toLowerCase();
+    const existing = fallbackUsers.get(key);
+    if (existing) {
+      throw new Error('An account with this email already exists.');
+    }
+
+    const user: UserAuthRow = {
+      id: `local-${key}`,
+      email: input.email,
+      fullName: input.fullName,
+      mobileNumber: input.mobileNumber,
+      passwordEncrypted: input.passwordEncrypted,
+      authProvider: 'password',
+      passwordResetCode: null,
+      passwordResetExpiresAt: null,
+    };
+
+    fallbackUsers.set(key, user);
+    return user;
+  }
+
+  const rows = await query<UserAuthRow>(
+    `INSERT INTO users (
+       email,
+       full_name,
+       mobile_number,
+       password_encrypted,
+       auth_provider,
+       created_by,
+       updated_by
+     ) VALUES ($1, $2, $3, $4, 'password', $1, $1)
+     ON CONFLICT (email) DO NOTHING
+     RETURNING id,
+               email,
+               full_name AS "fullName",
+               mobile_number AS "mobileNumber",
+               password_encrypted AS "passwordEncrypted",
+               password_reset_code AS "passwordResetCode",
+               password_reset_expires_at::text AS "passwordResetExpiresAt",
+               auth_provider AS "authProvider"`,
+    [input.email, input.fullName, input.mobileNumber, input.passwordEncrypted]
+  );
+
+  const created = rows[0];
+  if (!created) {
+    throw new Error('An account with this email already exists.');
+  }
+
+  return created;
+}
+
+export async function savePasswordResetCode(input: {
+  email: string;
+  code: string;
+  expiresAtIso: string;
+}): Promise<UserAuthRow | null> {
+  const normalizedEmail = input.email.trim().toLowerCase();
+
+  if (!pool) {
+    const existing = await findUserByEmail(normalizedEmail);
+    if (!existing) {
+      return null;
+    }
+
+    const updated: UserAuthRow = {
+      ...existing,
+      passwordResetCode: input.code,
+      passwordResetExpiresAt: input.expiresAtIso,
+    };
+
+    fallbackUsers.set(existing.email.toLowerCase(), updated);
+    return updated;
+  }
+
+  const rows = await query<UserAuthRow>(
+    `UPDATE users
+     SET password_reset_code = $2,
+         password_reset_expires_at = $3::timestamptz,
+         updated_at = NOW(),
+         updated_by = email
+     WHERE deleted_at IS NULL
+       AND LOWER(email) = LOWER($1)
+     RETURNING id,
+               email,
+               full_name AS "fullName",
+               mobile_number AS "mobileNumber",
+               password_encrypted AS "passwordEncrypted",
+               password_reset_code AS "passwordResetCode",
+               password_reset_expires_at::text AS "passwordResetExpiresAt",
+               auth_provider AS "authProvider"`,
+    [normalizedEmail, input.code, input.expiresAtIso]
+  );
+
+  return rows[0] ?? null;
+}
+
+export async function verifyPasswordResetCode(input: {
+  email: string;
+  code: string;
+}): Promise<boolean> {
+  const normalizedEmail = input.email.trim().toLowerCase();
+  const nowMs = Date.now();
+
+  if (!pool) {
+    const existing = await findUserByEmail(normalizedEmail);
+    if (!existing?.passwordResetCode || !existing.passwordResetExpiresAt) {
+      return false;
+    }
+
+    return existing.passwordResetCode === input.code && new Date(existing.passwordResetExpiresAt).getTime() > nowMs;
+  }
+
+  const rows = await query<{ matches: boolean }>(
+    `SELECT EXISTS (
+       SELECT 1
+       FROM users
+       WHERE deleted_at IS NULL
+         AND LOWER(email) = LOWER($1)
+         AND password_reset_code = $2
+         AND password_reset_expires_at IS NOT NULL
+         AND password_reset_expires_at > NOW()
+     ) AS matches`,
+    [normalizedEmail, input.code]
+  );
+
+  return rows[0]?.matches ?? false;
+}
+
+export async function completePasswordReset(input: {
+  email: string;
+  code: string;
+  passwordEncrypted: string;
+}): Promise<UserAuthRow | null> {
+  const normalizedEmail = input.email.trim().toLowerCase();
+
+  if (!(await verifyPasswordResetCode({ email: normalizedEmail, code: input.code }))) {
+    return null;
+  }
+
+  return updateUserPasswordByEmailOrMobile({
+    loginId: normalizedEmail,
+    passwordEncrypted: input.passwordEncrypted,
+  });
+}
+
 export async function seedDatabase(options?: { days?: number; startDate?: Date }): Promise<void> {
   if (!pool) {
     return;
@@ -870,16 +1235,45 @@ export async function seedDatabase(options?: { days?: number; startDate?: Date }
       await seedSportEvents(client);
       await seedSportFacilities(client);
 
+      const demoEncryptedPassword = await encryptPasswordAtRest(DEMO_USER_PASSWORD);
+
       await client.query(
-        `INSERT INTO users (email, auth_provider, created_by, updated_by)
-         VALUES ($1, $2, 'seed', 'seed')
+        `INSERT INTO users (email, full_name, mobile_number, password_encrypted, auth_provider, created_by, updated_by)
+         VALUES ($1, $2, $3, $4, $5, 'seed', 'seed')
          ON CONFLICT (email)
          DO UPDATE SET
+           full_name = EXCLUDED.full_name,
+           mobile_number = EXCLUDED.mobile_number,
+           password_encrypted = EXCLUDED.password_encrypted,
+           auth_provider = EXCLUDED.auth_provider,
            updated_at = NOW(),
            updated_by = 'seed',
            deleted_at = NULL`,
-        [DEMO_USER_EMAIL, 'password']
+        [DEMO_USER_EMAIL, DEMO_USER_NAME, DEMO_USER_MOBILE, demoEncryptedPassword, 'password']
       );
+
+      const dummyUsers = [
+        { email: 'jane.coach@example.com', fullName: 'Jane Coach', mobileNumber: '+6598765432', password: 'CoachPass@123' },
+        { email: 'mike.player@example.com', fullName: 'Mike Player', mobileNumber: '+6587654321', password: 'PlayerPass@123' },
+      ] as const;
+
+      for (const dummy of dummyUsers) {
+        const encryptedPassword = await encryptPasswordAtRest(dummy.password);
+        await client.query(
+          `INSERT INTO users (email, full_name, mobile_number, password_encrypted, auth_provider, created_by, updated_by)
+           VALUES ($1, $2, $3, $4, 'password', 'seed', 'seed')
+           ON CONFLICT (email)
+           DO UPDATE SET
+             full_name = EXCLUDED.full_name,
+             mobile_number = EXCLUDED.mobile_number,
+             password_encrypted = EXCLUDED.password_encrypted,
+             auth_provider = EXCLUDED.auth_provider,
+             updated_at = NOW(),
+             updated_by = 'seed',
+             deleted_at = NULL`,
+          [dummy.email, dummy.fullName, dummy.mobileNumber, encryptedPassword]
+        );
+      }
 
       for (let index = 0; index < days; index++) {
         const date = new Date(startDate);
@@ -890,9 +1284,48 @@ export async function seedDatabase(options?: { days?: number; startDate?: Date }
 
       // Seed a few realistic bookings so My Bookings / schedule flows have data.
       const demoBookings = [
-        { dayOffset: 1, time: '10:00', bookingType: 'court', packageId: null, payMethod: 'STRIPE', total: 31.02, status: 'confirmed', paymentMethod: 'ONLINE' },
-        { dayOffset: 2, time: '18:30', bookingType: 'court', packageId: null, payMethod: 'PAYNOW', total: 31.02, status: 'confirmed', paymentMethod: 'ONLINE' },
-        { dayOffset: 3, time: '09:30', bookingType: 'coaching', packageId: 'pack3', payMethod: 'GPAY', total: 88, status: 'cash_pending', paymentMethod: 'CASH' },
+        {
+          dayOffset: 1,
+          time: '10:00',
+          bookingType: 'court',
+          packageId: null,
+          payMethod: 'STRIPE',
+          total: 31.02,
+          status: 'confirmed',
+          paymentMethod: 'ONLINE',
+          facilityTitle: 'Cricket Net 2',
+          facilityAddress: 'Kallang, Singapore',
+          facilityImageKey: 'nets-2',
+          facilityTag: 'Net Lane',
+        },
+        {
+          dayOffset: 2,
+          time: '18:30',
+          bookingType: 'court',
+          packageId: null,
+          payMethod: 'PAYNOW',
+          total: 31.02,
+          status: 'confirmed',
+          paymentMethod: 'ONLINE',
+          facilityTitle: 'Cricket Outdoor Field',
+          facilityAddress: 'Yishun, Singapore',
+          facilityImageKey: 'outdoor-field',
+          facilityTag: 'Field',
+        },
+        {
+          dayOffset: 3,
+          time: '09:30',
+          bookingType: 'coaching',
+          packageId: 'pack3',
+          payMethod: 'GPAY',
+          total: 88,
+          status: 'cash_pending',
+          paymentMethod: 'CASH',
+          facilityTitle: 'Coaching Session',
+          facilityAddress: 'Kallang, Singapore',
+          facilityImageKey: 'indoor-court',
+          facilityTag: 'Package',
+        },
       ] as const;
 
       for (const demo of demoBookings) {
@@ -923,11 +1356,15 @@ export async function seedDatabase(options?: { days?: number; startDate?: Date }
              grand_total,
              receipt_id,
              customer_email,
+             facility_title,
+             facility_address,
+             facility_image_key,
+             facility_tag,
              status,
              payment_method,
              created_by,
              updated_by
-           ) VALUES ($1, $2, $3::time, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+           ) VALUES ($1, $2, $3::time, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
            ON CONFLICT (receipt_id) DO NOTHING`,
           [
             demo.bookingType,
@@ -939,6 +1376,10 @@ export async function seedDatabase(options?: { days?: number; startDate?: Date }
             demo.total,
             receiptId,
             DEMO_USER_EMAIL,
+            demo.facilityTitle,
+            demo.facilityAddress,
+            demo.facilityImageKey,
+            demo.facilityTag,
             demo.status,
             demo.paymentMethod,
             'seed',

@@ -189,7 +189,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const goBack = useCallback(() => {
-    const order: Screen[] = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'terms', 'login', 'checkout', 'booking-confirmation', 'bookings'];
+    const order: Screen[] = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'terms', 'login', 'forgot-password', 'checkout', 'booking-confirmation', 'bookings'];
     const idx = order.indexOf(state.screen);
     if (idx <= 0) return;
 
