@@ -3,7 +3,6 @@ import { ChevronRight, ShieldCheck } from 'lucide-react';
 import { useApp, useSelectBookingType } from '@/context/AppContext';
 import { announce } from '@/lib/utils';
 import ScreenHeader from '@/components/ScreenHeader';
-import SportsBottomNav from '@/components/SportsBottomNav';
 import selectSportBackground from '@/assets/select_sport_bk.png';
 import cricketCard from '@/assets/card_cricket.png';
 import indoorCricketCard from '@/assets/card_indoor_cricket.png';
@@ -33,6 +32,14 @@ const SPORT_IMAGES: Record<SportOption['imageKey'], string> = {
   basketball: basketballCard,
   kabaddi: kabaddiCard,
 };
+
+const DISABLED_SPORT_IDS = new Set<SportId>([
+  'soccer',
+  'volleyball',
+  'badminton',
+  'basketball',
+  'kabaddi',
+]);
 
 function toSportTiles(sports: SportOption[]): SportTile[] {
   return sports.map((sport) => ({
@@ -71,6 +78,10 @@ export default function SportSelectScreen() {
   }, []);
 
   function handleSportSelect(sport: SportTile) {
+    if (DISABLED_SPORT_IDS.has(sport.id)) {
+      return;
+    }
+
     selectType('court');
     dispatch({ type: 'SET_SELECTED_SPORT', payload: sport.id });
     announce(`${sport.label} selected.`);
@@ -103,9 +114,11 @@ export default function SportSelectScreen() {
             <button
               type="button"
               key={sport.id}
-              className="sport-card"
+              className={`sport-card${DISABLED_SPORT_IDS.has(sport.id) ? ' is-disabled' : ''}`}
               role="listitem"
               aria-label={`Select ${sport.label}`}
+              aria-disabled={DISABLED_SPORT_IDS.has(sport.id)}
+              disabled={DISABLED_SPORT_IDS.has(sport.id)}
               onClick={() => handleSportSelect(sport)}
             >
               <img src={sport.image} alt={sport.label} className="sport-card-img" />
@@ -124,8 +137,6 @@ export default function SportSelectScreen() {
           </span>
           <ChevronRight size={18} strokeWidth={2.4} className="sport-info-arrow" aria-hidden="true" />
         </button>
-
-        <SportsBottomNav onNavigate={navigate} activeItem="home" />
 
       </div>
     </div>

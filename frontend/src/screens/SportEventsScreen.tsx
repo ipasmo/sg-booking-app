@@ -9,7 +9,6 @@ import {
 import { useApp } from '@/context/AppContext';
 import { announce } from '@/lib/utils';
 import ScreenHeader from '@/components/ScreenHeader';
-import SportsBottomNav from '@/components/SportsBottomNav';
 import sportEventsBackground from '@/assets/select_sport_bk.png';
 import cricketBanner from '@/assets/cricket_banner.png';
 import cricketCard from '@/assets/card_cricket.png';
@@ -197,7 +196,6 @@ export default function SportEventsScreen() {
           ))}
         </div>
 
-        <SportsBottomNav onNavigate={navigate} activeItem="home" />
       </div>
     </div>
   );

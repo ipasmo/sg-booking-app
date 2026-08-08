@@ -3,6 +3,7 @@ import type {
   BookingPayload,
   BookingResponse,
   LoginResponse,
+  ProfileResponse,
   RegisterPayload,
   SlotsResponse,
   SportFacilitiesResponse,
@@ -137,6 +138,12 @@ export async function loginUser(loginId: string, password: string): Promise<Logi
   return request<LoginResponse>('/api/auth/login', {
     method: 'POST',
     body: JSON.stringify({ loginId, encryptedPassword }),
+  });
+}
+
+export async function fetchProfile(token: string): Promise<ProfileResponse> {
+  return request<ProfileResponse>('/api/auth/profile', {
+    headers: { Authorization: `Bearer ${token}` },
   });
 }
 

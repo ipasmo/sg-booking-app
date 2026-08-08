@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   CalendarDays,
   Clock3,
-  Compass,
   Copy,
-  GraduationCap,
+  CreditCard,
   Headphones,
-  Home,
   MapPin,
-  User,
+  ReceiptText,
+  Tag,
+  Timer,
+  X,
 } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { fetchMyBookings } from '@/lib/api';
@@ -37,13 +38,17 @@ type BookingTab = 'upcoming' | 'previous';
 
 type BookingCard = {
   id: string;
+  bookingType: BookingHistoryItem['bookingType'];
   title: string;
   location: string;
   dateText: string;
   timeText: string;
+  durationMins: number;
   amount: string;
   statusLabel: string;
   statusType: 'upcoming' | 'completed';
+  payMethod: BookingHistoryItem['payMethod'];
+  paymentMethod: BookingHistoryItem['paymentMethod'];
   tags: [string, string];
   image: string;
 };
@@ -97,19 +102,31 @@ function mapHistoryToCard(item: BookingHistoryItem): BookingCard {
 
   return {
     id: item.receiptId,
+    bookingType: item.bookingType,
     title: item.facilityTitle ?? fallbackTitle,
     location: item.facilityAddress ?? fallbackLocation,
     dateText: formatDateForCard(item.slotDate),
     timeText: `${to12Hour(start)} - ${to12Hour(end)} (${item.durationMins} min)`,
+    durationMins: item.durationMins,
     amount: `S$${item.grandTotal.toFixed(2)}`,
     statusLabel,
     statusType: isPast ? 'completed' : 'upcoming',
+    payMethod: item.payMethod,
+    paymentMethod: item.paymentMethod,
     tags: item.facilityTag ? [isCoaching ? 'Coaching' : 'Facility', item.facilityTag] : fallbackTags,
     image: item.facilityImageKey ? FACILITY_IMAGES[item.facilityImageKey] : isCoaching ? cricketGear : indoorCricketCard,
   };
 }
 
-function BookingCardView({ booking, showActions }: { booking: BookingCard; showActions: boolean }) {
+function BookingCardView({
+  booking,
+  showActions,
+  onViewDetails,
+}: {
+  booking: BookingCard;
+  showActions: boolean;
+  onViewDetails: (booking: BookingCard) => void;
+}) {
   function copyId() {
     navigator.clipboard.writeText(booking.id).catch(() => undefined);
     announce('Booking ID copied.');
@@ -158,11 +175,118 @@ function BookingCardView({ booking, showActions }: { booking: BookingCard; showA
           </div>
         ) : (
           <div className="bookings-actions-v2">
-            <button type="button" className="bookings-action-btn-v2 ghost">View Details</button>
+            <button
+              type="button"
+              className="bookings-action-btn-v2 ghost"
+              onClick={() => onViewDetails(booking)}
+            >
+              View Details
+            </button>
           </div>
         )}
       </div>
     </article>
+  );
+}
+
+function BookingDetailsDialog({ booking, onClose }: { booking: BookingCard; onClose: () => void }) {
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === 'Escape') onClose();
+    }
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+
+  function copyId() {
+    navigator.clipboard.writeText(booking.id).catch(() => undefined);
+    announce('Booking ID copied.');
+  }
+
+  const paymentMethodLabel = booking.paymentMethod === 'CASH'
+    ? 'Cash at Venue'
+    : {
+        STRIPE: 'Credit / Debit Card',
+        GPAY: 'Google Pay',
+        PAYNOW: 'PayNow',
+        GRABPAY: 'GrabPay',
+      }[booking.payMethod];
+
+  return (
+    <div
+      className="booking-details-backdrop"
+      role="presentation"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <section
+        className="booking-details-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="booking-details-title"
+      >
+        <header className="booking-details-header">
+          <div>
+            <span className="booking-details-eyebrow">Booking receipt</span>
+            <h2 id="booking-details-title">Booking Details</h2>
+          </div>
+          <button type="button" className="booking-details-close" onClick={onClose} aria-label="Close booking details" autoFocus>
+            <X size={20} strokeWidth={2.3} />
+          </button>
+        </header>
+
+        <div className="booking-details-venue">
+          <img src={booking.image} alt={booking.title} />
+          <div>
+            <h3>{booking.title}</h3>
+            <p><MapPin size={15} strokeWidth={2.2} />{booking.location}</p>
+            <span className={`bookings-status-v2 ${booking.statusType}`}>{booking.statusLabel}</span>
+          </div>
+        </div>
+
+        <div className="booking-details-grid">
+          <div className="booking-details-field">
+            <CalendarDays size={18} strokeWidth={2.1} />
+            <span><small>Date</small><strong>{booking.dateText}</strong></span>
+          </div>
+          <div className="booking-details-field">
+            <Clock3 size={18} strokeWidth={2.1} />
+            <span><small>Time</small><strong>{booking.timeText}</strong></span>
+          </div>
+          <div className="booking-details-field">
+            <Timer size={18} strokeWidth={2.1} />
+            <span><small>Duration</small><strong>{booking.durationMins} minutes</strong></span>
+          </div>
+          <div className="booking-details-field">
+            <Tag size={18} strokeWidth={2.1} />
+            <span><small>Booking type</small><strong>{booking.bookingType === 'coaching' ? 'Coaching' : 'Court Booking'}</strong></span>
+          </div>
+          <div className="booking-details-field">
+            <CreditCard size={18} strokeWidth={2.1} />
+            <span><small>Payment method</small><strong>{paymentMethodLabel}</strong></span>
+          </div>
+          <div className="booking-details-field">
+            <ReceiptText size={18} strokeWidth={2.1} />
+            <span><small>Total paid</small><strong>{booking.amount}</strong></span>
+          </div>
+        </div>
+
+        <div className="booking-details-id">
+          <span><small>Booking ID</small><strong>{booking.id}</strong></span>
+          <button type="button" onClick={copyId} aria-label="Copy booking id">
+            <Copy size={17} strokeWidth={2.3} />
+          </button>
+        </div>
+
+        <div className="booking-details-tags" aria-label="Booking categories">
+          {booking.tags.map((tag) => <span key={tag}>{tag}</span>)}
+        </div>
+
+        <button type="button" className="booking-details-done" onClick={onClose}>Done</button>
+      </section>
+    </div>
   );
 }
 
@@ -172,6 +296,7 @@ export default function ViewBookingsScreen() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [historyItems, setHistoryItems] = useState<BookingHistoryItem[]>([]);
+  const [selectedBooking, setSelectedBooking] = useState<BookingCard | null>(null);
 
   useEffect(() => {
     if (!state.authToken) return;
@@ -211,102 +336,88 @@ export default function ViewBookingsScreen() {
   return (
     <div className="page-container page-container--immersive screen-fade-enter">
       <div className="bookings-phone" style={{ backgroundImage: `url(${pageBackground})` }}>
-        <ScreenHeader
-          onBack={() => navigate('home')}
-          backAriaLabel="Back to home"
-          rightSlot={(
-            <button type="button" className="bookings-calendar-btn-v2" aria-label="Calendar">
-              <CalendarDays size={20} strokeWidth={2.2} />
+        <div className="bookings-scroll-v2">
+          <ScreenHeader
+            onBack={() => navigate('home')}
+            backAriaLabel="Back to home"
+            rightSlot={(
+              <button type="button" className="bookings-calendar-btn-v2" aria-label="Calendar">
+                <CalendarDays size={20} strokeWidth={2.2} />
+              </button>
+            )}
+          />
+
+          <section className="bookings-title-v2">
+            <h1>My Bookings</h1>
+            <p>Manage your facility bookings</p>
+          </section>
+
+          <ErrorBanner message={error} onDismiss={() => setError(null)} />
+
+          <section className="bookings-tabs-v2" aria-label="Bookings filter tabs">
+            <button
+              type="button"
+              className={`bookings-tab-v2${tab === 'upcoming' ? ' active' : ''}`}
+              onClick={() => setTab('upcoming')}
+            >
+              Upcoming Bookings
             </button>
-          )}
-        />
+            <button
+              type="button"
+              className={`bookings-tab-v2${tab === 'previous' ? ' active' : ''}`}
+              onClick={() => setTab('previous')}
+            >
+              Previous Bookings
+            </button>
+          </section>
 
-        <section className="bookings-title-v2">
-          <h1>My Bookings</h1>
-          <p>Manage your facility bookings</p>
-        </section>
+          <section className="bookings-section-v2">
+            <header>
+              <h2>
+                <CalendarDays size={18} strokeWidth={2.2} />
+                {tab === 'upcoming' ? 'Upcoming Bookings' : 'Previous Bookings'}
+              </h2>
+              <span>{activeList.length}</span>
+            </header>
 
-        <ErrorBanner message={error} onDismiss={() => setError(null)} />
+            {loading ? (
+              <div className="bookings-list-v2">
+                <Spinner />
+              </div>
+            ) : activeList.length === 0 ? (
+              <div className="bookings-list-v2">
+                <p>{tab === 'upcoming' ? 'No upcoming bookings yet.' : 'No previous bookings yet.'}</p>
+              </div>
+            ) : (
+              <div className="bookings-list-v2">
+                {activeList.map((booking) => (
+                  <BookingCardView
+                    key={booking.id}
+                    booking={booking}
+                    showActions={tab === 'upcoming'}
+                    onViewDetails={setSelectedBooking}
+                  />
+                ))}
+              </div>
+            )}
+          </section>
 
-        <section className="bookings-tabs-v2" aria-label="Bookings filter tabs">
-          <button
-            type="button"
-            className={`bookings-tab-v2${tab === 'upcoming' ? ' active' : ''}`}
-            onClick={() => setTab('upcoming')}
-          >
-            Upcoming Bookings
-          </button>
-          <button
-            type="button"
-            className={`bookings-tab-v2${tab === 'previous' ? ' active' : ''}`}
-            onClick={() => setTab('previous')}
-          >
-            Previous Bookings
-          </button>
-        </section>
-
-        <section className="bookings-section-v2">
-          <header>
-            <h2>
-              <CalendarDays size={18} strokeWidth={2.2} />
-              {tab === 'upcoming' ? 'Upcoming Bookings' : 'Previous Bookings'}
-            </h2>
-            <span>{activeList.length}</span>
-          </header>
-
-          {loading ? (
-            <div className="bookings-list-v2">
-              <Spinner />
+          <section className="bookings-help-v2">
+            <div>
+              <strong>
+                <Headphones size={18} strokeWidth={2.2} />
+                Need help with your booking?
+              </strong>
+              <p>Contact our support team for assistance.</p>
             </div>
-          ) : activeList.length === 0 ? (
-            <div className="bookings-list-v2">
-              <p>{tab === 'upcoming' ? 'No upcoming bookings yet.' : 'No previous bookings yet.'}</p>
-            </div>
-          ) : (
-            <div className="bookings-list-v2">
-              {activeList.map((booking) => (
-                <BookingCardView key={booking.id} booking={booking} showActions={tab === 'upcoming'} />
-              ))}
-            </div>
-          )}
-        </section>
+            <button type="button">Contact Support</button>
+          </section>
+        </div>
 
-        <section className="bookings-help-v2">
-          <div>
-            <strong>
-              <Headphones size={18} strokeWidth={2.2} />
-              Need help with your booking?
-            </strong>
-            <p>Contact our support team for assistance.</p>
-          </div>
-          <button type="button">Contact Support</button>
-        </section>
-
-        <nav className="bookings-bottom-nav-v2" aria-label="Bottom navigation">
-          <button type="button" className="bookings-nav-item-v2" onClick={() => navigate('home')}>
-            <Home size={22} strokeWidth={2.1} />
-            <span>Home</span>
-          </button>
-          <button type="button" className="bookings-nav-item-v2">
-            <Compass size={22} strokeWidth={2.1} />
-            <span>Explore</span>
-          </button>
-          <button type="button" className="bookings-nav-item-v2 active">
-            <CalendarDays size={22} strokeWidth={2.1} />
-            <span>My Bookings</span>
-          </button>
-          <button type="button" className="bookings-nav-item-v2">
-            <GraduationCap size={22} strokeWidth={2.1} />
-            <span>Academy</span>
-          </button>
-          <button type="button" className="bookings-nav-item-v2" onClick={() => navigate('login')}>
-            <User size={22} strokeWidth={2.1} />
-            <span>Profile</span>
-          </button>
-        </nav>
-
-        <div className="bookings-safe-space-v2" aria-hidden="true" />
       </div>
+      {selectedBooking && (
+        <BookingDetailsDialog booking={selectedBooking} onClose={() => setSelectedBooking(null)} />
+      )}
     </div>
   );
 }

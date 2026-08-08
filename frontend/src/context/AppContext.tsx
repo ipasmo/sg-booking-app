@@ -133,6 +133,9 @@ function reducer(state: AppState, action: Action): AppState {
     case 'MARK_WHATSAPP_SENT':
       return { ...state, whatsAppMockSent: true };
 
+    case 'LOG_OUT':
+      return { ...initialState, screen: 'login' };
+
     case 'RESET':
       return {
         ...initialState,
@@ -181,6 +184,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         dispatch({ type: 'SET_SCREEN', payload: 'login' });
         return;
       }
+      if (target === 'profile' && !state.isLoggedIn) {
+        dispatch({ type: 'SET_POST_LOGIN_REDIRECT', payload: 'profile' });
+        dispatch({ type: 'SET_SCREEN', payload: 'login' });
+        return;
+      }
       if (target === 'checkout' && (!state.selectedDate || !state.selectedTime)) return;
 
       dispatch({ type: 'SET_SCREEN', payload: target });
@@ -189,7 +197,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const goBack = useCallback(() => {
-    const order: Screen[] = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'terms', 'login', 'forgot-password', 'checkout', 'booking-confirmation', 'bookings'];
+    const order: Screen[] = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'terms', 'login', 'forgot-password', 'checkout', 'booking-confirmation', 'bookings', 'profile'];
     const idx = order.indexOf(state.screen);
     if (idx <= 0) return;
 
