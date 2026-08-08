@@ -22,6 +22,10 @@ function toFacilityImageKey(value: string | null | undefined): SportFacilityRow[
   return normalized as SportFacilityRow['imageKey'];
 }
 
+function normalizeEmail(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 // GET /api/bookings  (requires Bearer token)
 router.get('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
   const email = req.user?.email;
@@ -30,7 +34,7 @@ router.get('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     return;
   }
 
-  const bookings = await listBookingsByCustomer(email);
+  const bookings = await listBookingsByCustomer(normalizeEmail(email));
   res.json({ bookings });
 });
 
@@ -56,7 +60,11 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     facilityTag?: string | null;
   };
 
-  const customerEmail = req.user?.email ?? bodyCustomerEmail;
+  const customerEmail = req.user?.email
+    ? normalizeEmail(req.user.email)
+    : bodyCustomerEmail
+      ? normalizeEmail(bodyCustomerEmail)
+      : undefined;
 
   // Validate required fields and return exact missing keys for easier client troubleshooting.
   const missingFields: string[] = [];

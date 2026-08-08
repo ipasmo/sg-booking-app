@@ -23,7 +23,6 @@ Backend:
 
 - Express 4 + TypeScript
 - JWT auth middleware
-- Google token verification using `google-auth-library`
 - PostgreSQL client via `pg` with Neon SSL
 
 Database:
@@ -55,7 +54,7 @@ Key screens and purpose:
 - `SportFacilityScreen.tsx`: choose facility card.
 - `ScheduleScreen.tsx`: date/time and duration selection.
 - `TermsScreen.tsx`: terms acceptance.
-- `LoginScreen.tsx`: email/password and Google login.
+- `LoginScreen.tsx`: email/password login.
 - `CheckoutScreen.tsx`: payment flow.
 - `SuccessScreen.tsx`: booking completion state.
 - `BookingsScreen.tsx`: user bookings dashboard.

@@ -74,6 +74,7 @@ export type BookingHistoryRow = {
   durationMins: number;
   grandTotal: number;
   status: 'confirmed' | 'cash_pending';
+  payMethod: 'STRIPE' | 'GPAY' | 'PAYNOW' | 'GRABPAY';
   paymentMethod: 'ONLINE' | 'CASH';
   facilityTitle: string | null;
   facilityAddress: string | null;
@@ -105,7 +106,7 @@ export type UserAuthRow = {
   fullName: string;
   mobileNumber: string;
   passwordEncrypted: string;
-  authProvider: 'password' | 'google';
+  authProvider: string;
   passwordResetCode?: string | null;
   passwordResetExpiresAt?: string | null;
 };
@@ -836,6 +837,8 @@ export async function saveBooking(input: BookingInput): Promise<void> {
     return;
   }
 
+  const customerEmail = input.customerEmail.trim().toLowerCase();
+
   await withDatabaseClient(async (client) => {
     await client.query('BEGIN');
     try {
@@ -852,7 +855,7 @@ export async function saveBooking(input: BookingInput): Promise<void> {
            AND deleted_at IS NULL
            AND is_booked = FALSE
          RETURNING id`,
-        [input.selectedDate, input.selectedTime, input.customerEmail]
+        [input.selectedDate, input.selectedTime, customerEmail]
       );
 
       if (lockResult.rowCount === 0) {
@@ -888,15 +891,15 @@ export async function saveBooking(input: BookingInput): Promise<void> {
           input.payMethod,
           input.grandTotal,
           input.receiptId,
-          input.customerEmail,
+          customerEmail,
           input.facilityTitle ?? null,
           input.facilityAddress ?? null,
           input.facilityImageKey ?? null,
           input.facilityTag ?? null,
           input.bookingStatus,
           input.paymentMethod,
-          input.customerEmail,
-          input.customerEmail,
+          customerEmail,
+          customerEmail,
         ]
       );
 
@@ -913,6 +916,8 @@ export async function listBookingsByCustomer(customerEmail: string): Promise<Boo
     return [];
   }
 
+  const normalizedCustomerEmail = customerEmail.trim().toLowerCase();
+
   return query<BookingHistoryRow>(
     `SELECT
        receipt_id AS "receiptId",
@@ -921,6 +926,7 @@ export async function listBookingsByCustomer(customerEmail: string): Promise<Boo
        slot_time::text AS "slotTime",
        duration_mins AS "durationMins",
        grand_total::float8 AS "grandTotal",
+      pay_method AS "payMethod",
        facility_title AS "facilityTitle",
        facility_address AS "facilityAddress",
        facility_image_key AS "facilityImageKey",
@@ -929,9 +935,9 @@ export async function listBookingsByCustomer(customerEmail: string): Promise<Boo
        payment_method AS "paymentMethod"
      FROM bookings
      WHERE deleted_at IS NULL
-       AND customer_email = $1
+       AND LOWER(BTRIM(customer_email)) = $1
      ORDER BY slot_date DESC, slot_time DESC`,
-    [customerEmail]
+    [normalizedCustomerEmail]
   );
 }
 

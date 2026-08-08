@@ -185,7 +185,6 @@ Dev utility endpoint:
 - `PORT` default `3001`
 - `FRONTEND_URL` default `http://localhost:5173`
 - `JWT_SECRET` required
-- `GOOGLE_CLIENT_ID` optional unless using Google auth
 - `DATABASE_URL` required for Neon/Postgres mode
 - `DATABASE_SSL` default `true`
 - `DATABASE_CONNECTION_TIMEOUT_MS` default `5000`
@@ -196,7 +195,6 @@ Dev utility endpoint:
 ### Frontend (`frontend/.env.local`)
 
 - `VITE_API_BASE_URL` optional, defaults to proxy in local dev
-- `VITE_GOOGLE_CLIENT_ID` optional for Google One Tap/sign-in
 
 ## Environment-Specific Deployment
 
@@ -211,7 +209,6 @@ NODE_ENV=development
 PORT=3001
 FRONTEND_URL=http://localhost:5173
 JWT_SECRET=your-local-dev-secret
-GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 DATABASE_URL=postgresql://<user>:<password>@<neon-host>/<db>?uselibpqcompat=true&sslmode=require
 DATABASE_SSL=true
 DATABASE_CONNECTION_TIMEOUT_MS=5000
@@ -275,7 +272,6 @@ NODE_ENV=production
 PORT=3001
 FRONTEND_URL=https://your-frontend-domain.com
 JWT_SECRET=<strong-random-secret>
-GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 DATABASE_URL=postgresql://<user>:<password>@<neon-host>/<db>?uselibpqcompat=true&sslmode=require
 DATABASE_SSL=true
 DATABASE_CONNECTION_TIMEOUT_MS=5000
@@ -293,7 +289,6 @@ Frontend environment for production build:
 
 ```env
 VITE_API_BASE_URL=https://your-backend-domain.com
-VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
 ```
 
 Production build commands:
@@ -491,7 +486,7 @@ gcloud run deploy sg-booking-app-backend \
   --platform managed \
   --allow-unauthenticated \
   --set-env-vars NODE_ENV=production,PORT=3001,FRONTEND_URL=https://your-frontend-domain.com,DATABASE_SSL=true,DATABASE_CONNECTION_TIMEOUT_MS=5000,DATABASE_POOL_MAX=20,DEMO_USER_EMAIL=contact@ipasmo.com \
-  --set-secrets JWT_SECRET=JWT_SECRET:latest,GOOGLE_CLIENT_ID=GOOGLE_CLIENT_ID:latest,DATABASE_URL=DATABASE_URL:latest
+  --set-secrets JWT_SECRET=JWT_SECRET:latest,DATABASE_URL=DATABASE_URL:latest
 ```
 
 4. Verify health endpoint after deployment.
@@ -506,7 +501,6 @@ curl https://your-backend-domain.com/api/health
 2. `GET /api/slots` returns slot data for a valid date.
 3. Login and booking create/list flows work end-to-end.
 4. CORS allows only your production frontend domain.
-5. Google login callback and OAuth domain settings match deployed frontend URL.
 
 ### GitHub Main Branch Direct Deployment
 
@@ -544,7 +538,6 @@ git push origin main
 4. Add environment variables in Netlify:
 
 - `VITE_API_BASE_URL=https://your-backend-domain.com`
-- `VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com`
 
 You can create the Netlify site before adding `VITE_API_BASE_URL`, but you must redeploy after setting it.
 
@@ -570,7 +563,6 @@ Result:
 - `PORT=3001`
 - `FRONTEND_URL=https://your-frontend-domain.com`
 - `JWT_SECRET=<strong-random-secret>`
-- `GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com`
 - `DATABASE_URL=postgresql://<user>:<password>@<neon-host>/<db>?uselibpqcompat=true&sslmode=require`
 - `DATABASE_SSL=true`
 - `DATABASE_CONNECTION_TIMEOUT_MS=5000`

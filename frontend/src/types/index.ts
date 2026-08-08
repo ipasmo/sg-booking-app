@@ -2,7 +2,7 @@
 // Shared application types
 // ─────────────────────────────────────────────────────────────
 
-export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'terms' | 'login' | 'forgot-password' | 'checkout' | 'booking-confirmation' | 'bookings';
+export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'terms' | 'login' | 'forgot-password' | 'checkout' | 'booking-confirmation' | 'bookings' | 'profile';
 export type SportId = 'cricket' | 'indoor-cricket' | 'pickleball' | 'soccer' | 'volleyball' | 'badminton' | 'basketball' | 'kabaddi';
 export type SportImageKey = SportId;
 export type BookingType = 'court' | 'coaching';
@@ -139,6 +139,7 @@ export type Action =
   | { type: 'SET_PAYMENT_ERROR'; payload: string | null }
   | { type: 'SET_POST_LOGIN_REDIRECT'; payload: Screen | null }
   | { type: 'MARK_WHATSAPP_SENT' }
+  | { type: 'LOG_OUT' }
   | { type: 'RESET' };
 
 export interface BookingPayload {
@@ -160,6 +161,12 @@ export interface BookingPayload {
 export interface LoginResponse {
   token: string;
   email: string;
+}
+
+export interface ProfileResponse {
+  fullName: string;
+  email: string;
+  mobileNumber: string;
 }
 
 export interface RegisterPayload {
@@ -201,6 +208,7 @@ export interface BookingHistoryItem {
   durationMins: number;
   grandTotal: number;
   status: 'confirmed' | 'cash_pending';
+  payMethod: PayMethod;
   paymentMethod: 'ONLINE' | 'CASH';
   facilityTitle: string | null;
   facilityAddress: string | null;

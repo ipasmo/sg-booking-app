@@ -3,7 +3,6 @@ import { ArrowRight, CalendarDays, Clock3, MapPin, ShieldCheck, Star } from 'luc
 import { useApp } from '@/context/AppContext';
 import { announce } from '@/lib/utils';
 import ScreenHeader from '@/components/ScreenHeader';
-import SportsBottomNav from '@/components/SportsBottomNav';
 import selectSportBackground from '@/assets/select_sport_bk.png';
 import cricketFacility from '@/assets/cricket_facility.png';
 import bowlingLaneCard from '@/assets/bowling_lane.png';
@@ -155,7 +154,6 @@ export default function SportFacilityScreen() {
           </span>
         </div>
 
-        <SportsBottomNav onNavigate={navigate} activeItem="home" />
       </div>
     </div>
   );

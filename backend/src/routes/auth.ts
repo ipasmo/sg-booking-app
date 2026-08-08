@@ -3,6 +3,7 @@ import jwt from 'jsonwebtoken';
 import { completePasswordReset, createUserPasswordAccount, findUserByEmail, findUserByEmailOrMobile, savePasswordResetCode, verifyPasswordResetCode } from '../lib/database';
 import { decryptClientPasswordPayload, decryptPasswordAtRest, encryptPasswordAtRest } from '../lib/authCrypto';
 import { sendPasswordResetPasscode } from '../lib/email';
+import { authMiddleware, type AuthenticatedRequest } from '../middleware/authMiddleware';
 
 const router = Router();
 
@@ -13,6 +14,21 @@ const JWT_SECRET = process.env.JWT_SECRET ?? 'dev-secret-change-in-production';
 function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
+
+router.get('/profile', authMiddleware, async (req: AuthenticatedRequest, res) => {
+  const user = await findUserByEmail(req.user?.email ?? '');
+
+  if (!user) {
+    res.status(404).json({ error: 'Account profile was not found.' });
+    return;
+  }
+
+  res.json({
+    fullName: user.fullName,
+    email: user.email,
+    mobileNumber: user.mobileNumber,
+  });
+});
 
 router.post('/register', async (req, res) => {
   const {
