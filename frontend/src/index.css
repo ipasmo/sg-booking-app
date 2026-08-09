@@ -1577,7 +1577,7 @@ input { font-family: inherit; }
 .schedule-phone {
   min-height: min(100vh, 930px);
   background-color: #04112a;
-  padding: 10px 14px calc(20px + env(safe-area-inset-bottom));
+  padding: 10px 14px calc(104px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -1821,6 +1821,18 @@ input { font-family: inherit; }
 }
 .schedule-slot.booked {
   cursor: not-allowed;
+}
+.schedule-slot.unavailable {
+  cursor: not-allowed;
+  border-color: rgba(67, 82, 108, 0.82);
+  background: rgba(17, 32, 58, 0.78);
+}
+.schedule-slot.unavailable .schedule-slot-main,
+.schedule-slot.unavailable .schedule-slot-sub {
+  color: #8e9ab1;
+}
+.schedule-slot-dot.unavailable {
+  background: #8f97a7;
 }
 .schedule-slot.selected {
   border-color: rgba(203, 153, 73, 0.95);
@@ -4123,7 +4135,7 @@ input { font-family: inherit; }
     min-height: 100vh;
     border-radius: 0;
     border: 0;
-    padding: 14px 10px calc(18px + env(safe-area-inset-bottom));
+    padding: 14px 10px calc(104px + env(safe-area-inset-bottom));
   }
   .schedule-slot-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));

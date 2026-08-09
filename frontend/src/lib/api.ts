@@ -75,22 +75,28 @@ function resolveTemplate(template: string, sportLabel: string): string {
 
 function buildFallbackSportEvents(sportId: SportId): SportEventsResponse {
   const sport = (fallbackSports as SportOption[]).find((item) => item.id === sportId) ?? (fallbackSports as SportOption[])[0];
-  const events = (fallbackSportEvents as SportEventTemplate[]).map((event) => ({
+  const events = (fallbackSportEvents as SportEventTemplate[])
+    .filter((event) => event.sportId === sport.id)
+    .map((event) => ({
     id: event.id,
+    sportId: event.sportId,
     title: resolveTemplate(event.titleTemplate, sport.label),
     description: resolveTemplate(event.descriptionTemplate, sport.label),
     imageKey: event.imageKey,
     icon: event.icon,
     actionTarget: event.actionTarget,
+    enabled: event.enabled,
     sortOrder: event.sortOrder,
-  }));
+    }));
 
   return { sport, events };
 }
 
 function buildFallbackSportFacilities(sportId: SportId): SportFacilitiesResponse {
   const sport = (fallbackSports as SportOption[]).find((item) => item.id === sportId) ?? (fallbackSports as SportOption[])[0];
-  const facilities = (fallbackSportFacilities as SportFacilityTemplate[]).map((facility) => ({
+  const facilities = (fallbackSportFacilities as SportFacilityTemplate[])
+    .filter((facility) => facility.sportId === sport.id)
+    .map((facility) => ({
     id: `${sport.id}-${facility.code}`,
     sportId: sport.id,
     code: facility.code,
@@ -102,8 +108,9 @@ function buildFallbackSportFacilities(sportId: SportId): SportFacilitiesResponse
     imageKey: facility.imageKey,
     icon: facility.icon,
     actionTarget: facility.actionTarget,
+    enabled: facility.enabled,
     sortOrder: facility.sortOrder,
-  }));
+    }));
 
   return { sport, facilities };
 }

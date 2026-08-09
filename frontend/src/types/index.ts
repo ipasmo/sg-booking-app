@@ -14,6 +14,7 @@ export interface SportOption {
   label: string;
   imageKey: SportImageKey;
   bannerKey: SportId;
+  enabled: boolean;
   sortOrder: number;
 }
 
@@ -27,25 +28,30 @@ export type SportFacilityIcon = 'lane' | 'net' | 'court' | 'field' | 'academy' |
 
 export interface SportEventTemplate {
   id: string;
+  sportId: SportId;
   titleTemplate: string;
   descriptionTemplate: string;
   imageKey: SportEventImageKey;
   icon: SportEventIcon;
   actionTarget: SportEventActionTarget;
+  enabled: boolean;
   sortOrder: number;
 }
 
 export interface SportEventCard {
   id: string;
+  sportId: SportId;
   title: string;
   description: string;
   imageKey: SportEventImageKey;
   icon: SportEventIcon;
   actionTarget: SportEventActionTarget;
+  enabled: boolean;
   sortOrder: number;
 }
 
 export interface SportFacilityTemplate {
+  sportId: SportId;
   code: string;
   titleTemplate: string;
   price: string;
@@ -53,6 +59,7 @@ export interface SportFacilityTemplate {
   imageKey: SportFacilityImageKey;
   icon: SportFacilityIcon;
   actionTarget: SportFacilityActionTarget;
+  enabled: boolean;
   sortOrder: number;
   address: string;
   mapLocationUrl: string;
@@ -68,6 +75,7 @@ export interface SportFacilityCard {
   imageKey: SportFacilityImageKey;
   icon: SportFacilityIcon;
   actionTarget: SportFacilityActionTarget;
+  enabled: boolean;
   sortOrder: number;
   address: string;
   mapLocationUrl: string;

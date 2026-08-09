@@ -28,7 +28,7 @@ const router = Router();
 //   const requestedDays = Number(req.body?.days ?? 30);
 //   const days = Number.isFinite(requestedDays) && requestedDays > 0 ? Math.min(180, Math.floor(requestedDays)) : 30;
 
-//   // await resetDatabaseAndSeed({ days }); DO NOT ENABLE THIS IN PRODUCTION. This is a dev-only endpoint for QA flows.
+//   // await resetDatabaseAndSeed(); DO NOT ENABLE THIS IN PRODUCTION. This is a dev-only endpoint for QA flows.
 //   res.json({ ok: true, message: 'Database reset and seed completed.', days });
 // });
 

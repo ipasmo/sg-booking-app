@@ -93,9 +93,7 @@ Seed now creates:
 - sports catalog rows for `GET /api/sports`
 - sport event cards for `GET /api/sports/:sportId/events`
 - sport facility cards for `GET /api/sports/:sportId/facilities`
-- slot rows for a rolling date window
-- demo bookings for `contact@ipasmo.com` so My Bookings can be tested immediately
-- demo user record for `contact@ipasmo.com`
+- weekday slot configuration rows (`slot_weekday_configurations`)
 
 ### Step 4: Validate health
 
@@ -189,7 +187,6 @@ Dev utility endpoint:
 - `DATABASE_SSL` default `true`
 - `DATABASE_CONNECTION_TIMEOUT_MS` default `5000`
 - `DATABASE_POOL_MAX` default `10`
-- `DEMO_USER_EMAIL` default `contact@ipasmo.com`
 - `DEV_RESET_TOKEN` optional protection for `/api/dev/reset-seed`
 
 ### Frontend (`frontend/.env.local`)
@@ -213,7 +210,6 @@ DATABASE_URL=postgresql://<user>:<password>@<neon-host>/<db>?uselibpqcompat=true
 DATABASE_SSL=true
 DATABASE_CONNECTION_TIMEOUT_MS=5000
 DATABASE_POOL_MAX=10
-DEMO_USER_EMAIL=contact@ipasmo.com
 DEV_RESET_TOKEN=change-me
 ```
 
@@ -276,7 +272,6 @@ DATABASE_URL=postgresql://<user>:<password>@<neon-host>/<db>?uselibpqcompat=true
 DATABASE_SSL=true
 DATABASE_CONNECTION_TIMEOUT_MS=5000
 DATABASE_POOL_MAX=20
-DEMO_USER_EMAIL=contact@ipasmo.com
 ```
 
 Production rules:
@@ -410,7 +405,6 @@ GitHub-connected deployment from `main` (preferred):
 - `DATABASE_SSL=true`
 - `DATABASE_CONNECTION_TIMEOUT_MS=5000`
 - `DATABASE_POOL_MAX=20`
-- `DEMO_USER_EMAIL=contact@ipasmo.com`
 
 5. Trigger deploy from Render UI and verify:
 
@@ -485,7 +479,7 @@ gcloud run deploy sg-booking-app-backend \
   --region YOUR_REGION \
   --platform managed \
   --allow-unauthenticated \
-  --set-env-vars NODE_ENV=production,PORT=3001,FRONTEND_URL=https://your-frontend-domain.com,DATABASE_SSL=true,DATABASE_CONNECTION_TIMEOUT_MS=5000,DATABASE_POOL_MAX=20,DEMO_USER_EMAIL=contact@ipasmo.com \
+  --set-env-vars NODE_ENV=production,PORT=3001,FRONTEND_URL=https://your-frontend-domain.com,DATABASE_SSL=true,DATABASE_CONNECTION_TIMEOUT_MS=5000,DATABASE_POOL_MAX=20 \
   --set-secrets JWT_SECRET=JWT_SECRET:latest,DATABASE_URL=DATABASE_URL:latest
 ```
 
@@ -567,7 +561,6 @@ Result:
 - `DATABASE_SSL=true`
 - `DATABASE_CONNECTION_TIMEOUT_MS=5000`
 - `DATABASE_POOL_MAX=20`
-- `DEMO_USER_EMAIL=contact@ipasmo.com`
 
 6. Enable Auto-Deploy from `main`.
 
@@ -672,7 +665,7 @@ the slot was claimed by another user; choose another slot and retry.
 - Slot list empty/unexpected:
 run `npm run db:seed` again.
 - My Bookings appears empty:
-log in with `contact@ipasmo.com` (or the same email used to create bookings).
+create at least one booking with your logged-in account and refresh My Bookings.
 - Auth token errors:
 check `JWT_SECRET` and request `Authorization: Bearer <token>`.
 

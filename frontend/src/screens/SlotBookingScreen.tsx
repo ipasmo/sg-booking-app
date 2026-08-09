@@ -28,6 +28,7 @@ const FACILITY_IMAGES: Record<SportFacilityCard['imageKey'], string> = {
 };
 
 const FALLBACK_RATE_PER_HOUR = 45;
+const SLOT_STEP_MINUTES = 30;
 
 function resolveTemplate(template: string, sportLabel: string): string {
   return template
@@ -37,7 +38,9 @@ function resolveTemplate(template: string, sportLabel: string): string {
 
 function buildFallbackFacilityPage(sportId: SportId) {
   const sport = (fallbackSports as SportOption[]).find((item) => item.id === sportId) ?? (fallbackSports as SportOption[])[0];
-  const facilities = (fallbackSportFacilities as SportFacilityTemplate[]).map((facility) => ({
+  const facilities = (fallbackSportFacilities as SportFacilityTemplate[])
+    .filter((facility) => facility.sportId === sport.id)
+    .map((facility) => ({
     id: `${sport.id}-${facility.code}`,
     sportId: sport.id,
     code: facility.code,
@@ -49,8 +52,9 @@ function buildFallbackFacilityPage(sportId: SportId) {
     imageKey: facility.imageKey,
     icon: facility.icon,
     actionTarget: facility.actionTarget,
+    enabled: facility.enabled,
     sortOrder: facility.sortOrder,
-  }));
+    }));
 
   return { sport, facilities };
 }
@@ -73,6 +77,29 @@ function addMinutes(time: string, minutes: number): string {
 function toMinutes(time: string): number {
   const [h, m] = time.split(':').map(Number);
   return h * 60 + m;
+}
+
+function canStartAtSlot(slots: { time: string; booked: boolean }[], startIndex: number, requiredSegments: number): boolean {
+  if (startIndex + requiredSegments > slots.length) {
+    return false;
+  }
+
+  for (let step = 0; step < requiredSegments; step++) {
+    const current = slots[startIndex + step];
+    if (!current || current.booked) {
+      return false;
+    }
+
+    if (step > 0) {
+      const previous = slots[startIndex + step - 1];
+      const diff = toMinutes(current.time) - toMinutes(previous.time);
+      if (diff !== SLOT_STEP_MINUTES) {
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 function formatDurationLabel(minutes: number): string {
@@ -155,6 +182,29 @@ export default function SlotBookingScreen() {
       })
       .sort();
   }, [state.selectedTime, state.durationMins, state.slots]);
+
+  const availableStartTimes = useMemo(() => {
+    const requiredSegments = Math.max(1, Math.ceil(state.durationMins / SLOT_STEP_MINUTES));
+    const starts = new Set<string>();
+
+    for (let index = 0; index < state.slots.length; index++) {
+      if (canStartAtSlot(state.slots, index, requiredSegments)) {
+        starts.add(state.slots[index].time);
+      }
+    }
+
+    return starts;
+  }, [state.durationMins, state.slots]);
+
+  useEffect(() => {
+    if (!state.selectedTime) {
+      return;
+    }
+
+    if (!availableStartTimes.has(state.selectedTime)) {
+      dispatch({ type: 'SET_TIME', payload: '' });
+    }
+  }, [availableStartTimes, dispatch, state.selectedTime]);
 
   const blockedIntermediateTimesLabel = blockedIntermediateTimes
     .map((time) => `${to12Hour(time)}-${to12Hour(addMinutes(time, 60))}`)
@@ -309,66 +359,9 @@ export default function SlotBookingScreen() {
           </div>
         </section>
 
-        <section className="schedule-section">
-          <h2 className="schedule-heading">2. Select Time Slot</h2>
-          {state.selectedDate && state.slotsLoading && (
-            <div className="no-slots schedule-no-slots">
-              <Spinner variant="muted" />
-              <div style={{ marginTop: 14 }}>Loading available slots...</div>
-            </div>
-          )}
-
-          {state.selectedDate && !state.slotsLoading && state.slotsError && (
-            <ErrorBanner
-              message={state.slotsError}
-              onDismiss={() => dispatch({ type: 'CLEAR_SLOTS_ERROR' })}
-            />
-          )}
-
-          {state.selectedDate && !state.slotsLoading && !state.slotsError && state.slots.length === 0 && (
-            <div className="no-slots schedule-no-slots">
-              <div className="no-slots-icon">No slots</div>
-              <div>No available slots on this date. Please try another day.</div>
-            </div>
-          )}
-
-          {state.selectedDate && !state.slotsLoading && state.slots.length > 0 && (
-            <div className="schedule-slot-grid">
-              {state.slots.map((s, index) => {
-                const sel = !s.booked && state.selectedTime === s.time;
-                const mood = s.booked ? 'full' : index % 4 === 2 ? 'few' : 'available';
-                return (
-                  <div
-                    key={s.key}
-                    className={`schedule-slot${s.booked ? ' booked' : ''}${sel ? ' selected' : ''} ${mood}`}
-                    role="button"
-                    tabIndex={s.booked ? -1 : 0}
-                    aria-disabled={s.booked}
-                    aria-pressed={sel}
-                    onClick={!s.booked ? () => handleSlotSelect(s.time) : undefined}
-                    onKeyDown={!s.booked
-                      ? (e) => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          handleSlotSelect(s.time);
-                        }
-                      }
-                      : undefined
-                    }
-                  >
-                    <div className="schedule-slot-main">{to12Hour(s.time)}</div>
-                    <div className="schedule-slot-sub">- {to12Hour(addMinutes(s.time, 60))}</div>
-                    <i className={`schedule-slot-dot ${mood}`} aria-hidden="true" />
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-
         {!state.bookingType || state.bookingType === 'court' ? (
           <section className="schedule-section">
-            <h2 className="schedule-heading">3. Select Duration</h2>
+            <h2 className="schedule-heading">2. Select Duration</h2>
             <div className="schedule-duration-grid">
               {DURATIONS.map((d) => {
                 const selected = state.durationMins === d.value;
@@ -393,6 +386,66 @@ export default function SlotBookingScreen() {
             </div>
           </section>
         ) : null}
+
+        <section className="schedule-section">
+          <h2 className="schedule-heading">3. Select Time Slot</h2>
+          {state.selectedDate && state.slotsLoading && (
+            <div className="no-slots schedule-no-slots">
+              <Spinner variant="muted" />
+              <div style={{ marginTop: 14 }}>Loading available slots...</div>
+            </div>
+          )}
+
+          {state.selectedDate && !state.slotsLoading && state.slotsError && (
+            <ErrorBanner
+              message={state.slotsError}
+              onDismiss={() => dispatch({ type: 'CLEAR_SLOTS_ERROR' })}
+            />
+          )}
+
+          {state.selectedDate && !state.slotsLoading && !state.slotsError && state.slots.length === 0 && (
+            <div className="no-slots schedule-no-slots">
+              <div className="no-slots-icon">No slots</div>
+              <div>No available slots on this date. Please try another day.</div>
+            </div>
+          )}
+
+          {state.selectedDate && !state.slotsLoading && state.slots.length > 0 && (
+            <div className="schedule-slot-grid">
+              {state.slots.map((s, index) => {
+                const durationUnavailable = !s.booked && !availableStartTimes.has(s.time);
+                const disabled = s.booked || durationUnavailable;
+                const sel = !disabled && state.selectedTime === s.time;
+                const mood = s.booked ? 'full' : durationUnavailable ? 'unavailable' : index % 4 === 2 ? 'few' : 'available';
+                const endTime = addMinutes(s.time, state.durationMins);
+                return (
+                  <div
+                    key={s.key}
+                    className={`schedule-slot${s.booked ? ' booked' : ''}${durationUnavailable ? ' unavailable' : ''}${sel ? ' selected' : ''} ${mood}`}
+                    role="button"
+                    tabIndex={disabled ? -1 : 0}
+                    aria-disabled={disabled}
+                    aria-pressed={sel}
+                    onClick={!disabled ? () => handleSlotSelect(s.time) : undefined}
+                    onKeyDown={!disabled
+                      ? (e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          handleSlotSelect(s.time);
+                        }
+                      }
+                      : undefined
+                    }
+                  >
+                    <div className="schedule-slot-main">{to12Hour(s.time)}</div>
+                    <div className="schedule-slot-sub">- {to12Hour(endTime)}</div>
+                    <i className={`schedule-slot-dot ${mood}`} aria-hidden="true" />
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
 
         <section className="schedule-booking-summary">
           <div>

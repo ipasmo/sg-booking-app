@@ -25,14 +25,16 @@ router.get('/:sportId/events', async (req, res) => {
     return;
   }
 
-  const eventTemplates = await listSportEvents();
+  const eventTemplates = await listSportEvents(sport.id);
   const events = eventTemplates.map((event) => ({
     id: event.id,
+    sportId: event.sportId,
     title: resolveTemplate(event.titleTemplate, sport.label),
     description: resolveTemplate(event.descriptionTemplate, sport.label),
     imageKey: event.imageKey,
     icon: event.icon,
     actionTarget: event.actionTarget,
+    enabled: event.enabled,
     sortOrder: event.sortOrder,
   }));
 

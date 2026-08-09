@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authMiddleware, type AuthenticatedRequest } from '../middleware/authMiddleware';
-import { listBookingsByCustomer, saveBooking, SlotAlreadyBookedError, type SportFacilityRow } from '../lib/database';
+import { listBookingsByCustomer, saveBooking, SlotAlreadyBookedError, SlotConfigurationMissingError, type SportFacilityRow } from '../lib/database';
 
 const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -113,6 +113,13 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     if (error instanceof SlotAlreadyBookedError) {
       res.status(409).json({
         error: 'This slot is already booked. Please select a different time slot.',
+      });
+      return;
+    }
+
+    if (error instanceof SlotConfigurationMissingError) {
+      res.status(422).json({
+        error: 'No weekday slot configuration found. Please contact admin to configure this weekday.',
       });
       return;
     }

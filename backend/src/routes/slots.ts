@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { listSlotsForDate } from '../lib/database';
+import { listSlotsForDate, SlotConfigurationMissingError } from '../lib/database';
 
 const router = Router();
 
@@ -12,9 +12,22 @@ router.get('/', async (req, res) => {
     return;
   }
 
-  const slots = await listSlotsForDate(date);
+  try {
+    const slots = await listSlotsForDate(date);
 
-  res.json({ slots });
+    res.json({ slots });
+  } catch (error) {
+    if (error instanceof SlotConfigurationMissingError) {
+      res.status(422).json({
+        error: 'No weekday slot configuration found. Please configure start/end time for this weekday.',
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: 'Unable to load slots at the moment. Please try again.',
+    });
+  }
 });
 
 export default router;

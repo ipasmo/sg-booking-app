@@ -20,7 +20,7 @@ async function main() {
     return;
   }
 
-  await seedDatabase({ days: 14 });
+  await seedDatabase();
 
   const targetDate = datePlusDays(10);
   const targetTime = '11:00';
