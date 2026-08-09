@@ -1769,6 +1769,59 @@ input { font-family: inherit; }
 .schedule-legend .dot.few { background: #f2a32e; }
 .schedule-legend .dot.full { background: #e32633; }
 .schedule-legend .dot.unavailable { background: #8f97a7; }
+.schedule-duration-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.schedule-duration-card {
+  position: relative;
+  border-radius: 12px;
+  border: 1px solid rgba(37, 58, 87, 0.95);
+  background: rgba(10, 26, 55, 0.95);
+  color: #f5f8fc;
+  min-height: 92px;
+  padding: 12px 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  text-align: center;
+}
+.schedule-duration-card svg {
+  color: #e32633;
+}
+.schedule-duration-card span {
+  font-size: 0.82rem;
+}
+.schedule-duration-card strong {
+  font-size: 1rem;
+  color: #d6a157;
+}
+.schedule-duration-card.selected {
+  border-color: rgba(203, 153, 73, 0.92);
+  background: rgba(203, 153, 73, 0.12);
+  color: #f5f8fc;
+  box-shadow: 0 0 10px rgba(203, 153, 73, 0.2), 0 0 22px rgba(203, 153, 73, 0.12), inset 0 0 0 1px rgba(203, 153, 73, 0.58);
+  animation: accentPulse 2.2s ease-in-out infinite;
+}
+.schedule-duration-card.selected::after {
+  content: '\2713';
+  position: absolute;
+  right: 8px;
+  top: 7px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #d4a556;
+  color: #071832;
+  font-size: 0.65rem;
+  font-weight: 900;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 .schedule-slot-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1783,7 +1836,10 @@ input { font-family: inherit; }
   min-height: 72px;
   transition: transform var(--transition), border-color var(--transition), box-shadow var(--transition), background var(--transition);
 }
-.schedule-slot:hover:not(.booked) {
+.schedule-slot:not(.booked):not(.unavailable) {
+  cursor: pointer;
+}
+.schedule-slot:hover:not(.booked):not(.unavailable) {
   transform: translateY(-1px);
   border-color: rgba(203, 153, 73, 0.52);
 }
@@ -1831,82 +1887,7 @@ input { font-family: inherit; }
 .schedule-slot.unavailable .schedule-slot-sub {
   color: #8e9ab1;
 }
-.schedule-slot-dot.unavailable {
-  background: #8f97a7;
-}
-.schedule-slot.selected {
-  border-color: rgba(203, 153, 73, 0.95);
-  box-shadow: inset 0 0 0 1px rgba(203, 153, 73, 0.6);
-}
-.schedule-slot.selected::after {
-  content: '';
-  position: absolute;
-  right: 6px;
-  top: 6px;
-  width: 16px;
-  height: 16px;
-  border-radius: 50%;
-  border: 1px solid rgba(203, 153, 73, 0.8);
-  background: #d4a556;
-  box-shadow: 0 0 0 2px rgba(4, 17, 41, 0.95);
-}
-.schedule-no-slots {
-  margin-top: 8px;
-  margin-bottom: 4px;
-  border-radius: 12px;
-  border: 1px solid rgba(35, 54, 84, 0.9);
-  background: rgba(9, 23, 50, 0.95);
-  padding: 20px 12px;
-}
-.schedule-duration-grid {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 10px;
-}
-.schedule-duration-card {
-  position: relative;
-  border-radius: 12px;
-  border: 1px solid rgba(37, 58, 87, 0.95);
-  background: rgba(10, 26, 55, 0.95);
-  color: #f5f8fc;
-  min-height: 92px;
-  padding: 12px 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-direction: column;
-  gap: 5px;
-}
-.schedule-duration-card svg {
-  color: #e32633;
-}
-.schedule-duration-card span {
-  font-size: 0.82rem;
-}
-.schedule-duration-card strong {
-  font-size: 1rem;
-  color: #d6a157;
-}
-.schedule-duration-card.selected {
-  border-color: rgba(203, 153, 73, 0.92);
-  box-shadow: inset 0 0 0 1px rgba(203, 153, 73, 0.58);
-}
-.schedule-duration-card.selected::after {
-  content: '✔';
-  position: absolute;
-  right: 8px;
-  top: 7px;
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
-  background: #d4a556;
-  color: #071832;
-  font-size: 0.65rem;
-  font-weight: 900;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
+
 .schedule-booking-summary {
   border-radius: 12px;
   border: 1px solid rgba(35, 54, 84, 0.9);
@@ -1921,6 +1902,25 @@ input { font-family: inherit; }
   color: #9ba8c2;
   font-size: 0.7rem;
   margin-bottom: 2px;
+}
+.schedule-slot.selected {
+  border-color: rgba(203, 153, 73, 0.95);
+  background: rgba(203, 153, 73, 0.12);
+  color: #f5f8fc;
+  box-shadow: 0 0 10px rgba(203, 153, 73, 0.2), 0 0 22px rgba(203, 153, 73, 0.12), inset 0 0 0 1px rgba(203, 153, 73, 0.6);
+  animation: accentPulse 2.2s ease-in-out infinite;
+}
+.schedule-slot.selected::after {
+  content: '';
+  position: absolute;
+  right: 6px;
+  top: 6px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(203, 153, 73, 0.8);
+  background: #d4a556;
+  box-shadow: 0 0 0 2px rgba(4, 17, 41, 0.95);
 }
 .schedule-booking-summary strong {
   display: block;
@@ -2041,7 +2041,7 @@ input { font-family: inherit; }
 .terms-phone {
   min-height: min(100vh, 930px);
   background-color: #04112a;
-  padding: 10px 14px calc(20px + env(safe-area-inset-bottom));
+  padding: 10px 14px calc(104px + env(safe-area-inset-bottom));
   display: flex;
   flex-direction: column;
   gap: 12px;
@@ -2808,7 +2808,7 @@ input { font-family: inherit; }
   border: 1px solid rgba(212, 165, 55, 0.2);
   box-shadow: 0 28px 66px rgba(0, 0, 0, 0.55);
   background-color: #04112a;
-  padding: 14px 14px calc(20px + env(safe-area-inset-bottom));
+  padding: 14px 14px calc(124px + env(safe-area-inset-bottom));
 }
 .checkout-phone::before {
   content: '';
@@ -3121,7 +3121,7 @@ input { font-family: inherit; }
   border: 1px solid rgba(212, 165, 55, 0.2);
   box-shadow: 0 28px 66px rgba(0, 0, 0, 0.55);
   background-color: #04112a;
-  padding: 14px 14px calc(20px + env(safe-area-inset-bottom));
+  padding: 14px 14px calc(124px + env(safe-area-inset-bottom));
 }
 .success-phone::before {
   content: '';
@@ -4197,7 +4197,7 @@ input { font-family: inherit; }
     min-height: 100vh;
     border-radius: 0;
     border: 0;
-    padding: 14px 10px calc(18px + env(safe-area-inset-bottom));
+    padding: 14px 10px calc(132px + env(safe-area-inset-bottom));
   }
 
   .success-phone {
@@ -4205,7 +4205,7 @@ input { font-family: inherit; }
     min-height: 100vh;
     border-radius: 0;
     border: 0;
-    padding: 14px 10px calc(18px + env(safe-area-inset-bottom));
+    padding: 14px 10px calc(132px + env(safe-area-inset-bottom));
   }
 
   .bookings-phone {

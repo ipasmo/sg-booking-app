@@ -191,8 +191,8 @@ function toTimeLabel(totalMinutes: number): string {
 }
 
 function weekdayNameForDate(dateStr: string): (typeof WEEKDAY_NAMES)[number] {
-  const date = new Date(`${dateStr}T00:00:00+08:00`);
-  const dayIndex = date.getUTCDay();
+  const [year, month, day] = dateStr.split('-').map(Number);
+  const dayIndex = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
   return WEEKDAY_NAMES[dayIndex];
 }
 
@@ -921,6 +921,24 @@ export async function ensureSlotsForDate(client: PoolClient, dateStr: string): P
   if (generatedSlots.length === 0) {
     return;
   }
+
+  // Keep slots aligned with the configured weekday window in case prior runs used a mismatched weekday.
+  await client.query(
+    `DELETE FROM slots s
+     WHERE s.slot_date = $1
+       AND s.deleted_at IS NULL
+       AND s.is_booked = FALSE
+       AND (s.slot_time < $2::time OR s.slot_time >= $3::time)
+       AND NOT EXISTS (
+         SELECT 1
+         FROM bookings b
+         WHERE b.slot_date = s.slot_date
+           AND b.deleted_at IS NULL
+           AND s.slot_time >= b.slot_time
+           AND s.slot_time < (b.slot_time + make_interval(mins => b.duration_mins))
+       )`,
+    [dateStr, config.slotStartTime.slice(0, 5), config.slotEndTime.slice(0, 5)]
+  );
 
   const existingRows = await client.query<{ slot_time: string }>(
     `SELECT slot_time::text AS slot_time
