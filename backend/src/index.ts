@@ -6,8 +6,10 @@ import dotenv from 'dotenv';
 import authRoutes     from './routes/auth';
 import slotsRoutes    from './routes/slots';
 import bookingsRoutes from './routes/bookings';
+import paymentsRoutes from './routes/payments';
 import packagesRoutes from './routes/packages';
 import sportsRoutes   from './routes/sports';
+import configRoutes   from './routes/config';
 import devRoutes      from './routes/dev';
 import { isDatabaseConfigured } from './lib/database';
 
@@ -60,8 +62,10 @@ app.use(express.json({ limit: '50kb' }));
 app.use('/api/auth',     authRoutes);
 app.use('/api/slots',    slotsRoutes);
 app.use('/api/bookings', bookingsRoutes);
+app.use('/api/payments', paymentsRoutes);
 app.use('/api/packages', packagesRoutes);
 app.use('/api/sports',   sportsRoutes);
+app.use('/api/config',   configRoutes);
 app.use('/api/dev',      devRoutes);
 
 // ── Health check ──────────────────────────────────────────────

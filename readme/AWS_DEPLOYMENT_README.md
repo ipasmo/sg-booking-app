@@ -98,6 +98,8 @@ Repository:
 - `DATABASE_SSL=true` (if your connection policy requires)
 - `FRONTEND_URL=https://app.yourdomain.com`
 - `GOOGLE_CLIENT_ID=<optional>`
+- `STRIPE_SECRET_KEY=<stripe-secret-key>`
+- `STRIPE_CURRENCY=sgd`
 
 4. Expose API:
 - Use Application Load Balancer (ALB)
@@ -122,8 +124,9 @@ Repository:
 - Configure CloudFront custom error response:
   - 403/404 -> `/index.html` with 200 response
 
-5. Set frontend env var before build:
+5. Set frontend env vars before build:
 - `VITE_API_BASE_URL=https://api.yourdomain.com`
+- `VITE_STRIPE_PUBLISHABLE_KEY=<stripe-publishable-key>`
 
 6. Verify UI endpoints and API calls.
 

@@ -4,7 +4,6 @@ import {
   Camera,
   ChevronDown,
   Clock3,
-  FileText,
   Lock,
   MapPin,
   ShieldAlert,
@@ -14,6 +13,7 @@ import {
 import type { LucideIcon } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import ScreenHeader from '@/components/ScreenHeader';
+import BookingStepBar from '@/components/BookingStepBar';
 import pageBackground from '@/assets/select_sport_bk.png';
 import indoorCricketCard from '@/assets/card_indoor_cricket.png';
 import bowlingLaneCard from '@/assets/bowling_lane.png';
@@ -129,28 +129,7 @@ export default function TermsScreen() {
       <div className="terms-phone" style={{ backgroundImage: `url(${pageBackground})` }}>
         <ScreenHeader onBack={goBack} backAriaLabel="Back" />
 
-        <section className="terms-steps" aria-hidden="true">
-          <div className="terms-step">
-            <span className="terms-step-dot">
-              <CalendarClock size={16} strokeWidth={2.1} />
-            </span>
-            <small>Select Facility</small>
-          </div>
-          <div className="terms-step-line active" />
-          <div className="terms-step">
-            <span className="terms-step-dot">
-              <Clock3 size={16} strokeWidth={2.1} />
-            </span>
-            <small>Choose Time</small>
-          </div>
-          <div className="terms-step-line" />
-          <div className="terms-step">
-            <span className="terms-step-dot gold">
-              <FileText size={16} strokeWidth={2.1} />
-            </span>
-            <small>Review &amp; Pay</small>
-          </div>
-        </section>
+        <BookingStepBar currentStep={3} />
 
         <section className="terms-title-wrap">
           <h1>
@@ -244,7 +223,7 @@ export default function TermsScreen() {
             </div>
             <div className="terms-summary-amount">
               <strong>S${total}</strong>
-              <span>(Incl. taxes)</span>
+              <span>(Booking fee only)</span>
             </div>
           </div>
 

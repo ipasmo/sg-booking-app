@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Clock3, Lightbulb, MapPin, Orbit } from 'lucide-react';
+import { Circle, Clock3, MapPin } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { fetchSlots } from '@/lib/api';
 import { DURATIONS } from '@/lib/constants';
@@ -7,6 +7,7 @@ import { formatDateShort, rollingDatesForMonths, toISO, announce } from '@/lib/u
 import Spinner from '@/components/Spinner';
 import ErrorBanner from '@/components/ErrorBanner';
 import ScreenHeader from '@/components/ScreenHeader';
+import BookingStepBar from '@/components/BookingStepBar';
 import prevArrow from '@/assets/date-prev.svg';
 import nextArrow from '@/assets/date-next.svg';
 import scheduleBackground from '@/assets/select_sport_bk.png';
@@ -79,14 +80,14 @@ function toMinutes(time: string): number {
   return h * 60 + m;
 }
 
-function canStartAtSlot(slots: { time: string; booked: boolean }[], startIndex: number, requiredSegments: number): boolean {
+function canStartAtSlot(slots: { time: string; booked: boolean; past: boolean }[], startIndex: number, requiredSegments: number): boolean {
   if (startIndex + requiredSegments > slots.length) {
     return false;
   }
 
   for (let step = 0; step < requiredSegments; step++) {
     const current = slots[startIndex + step];
-    if (!current || current.booked) {
+    if (!current || current.booked || current.past) {
       return false;
     }
 
@@ -265,6 +266,8 @@ export default function SlotBookingScreen() {
       <div className="schedule-phone" style={{ backgroundImage: `url(${scheduleBackground})` }}>
         <ScreenHeader onBack={goBack} backAriaLabel="Back" />
 
+        <BookingStepBar currentStep={2} />
+
         <section className="schedule-venue-card">
           <img src={FACILITY_IMAGES[selectedFacility.imageKey]} alt={selectedFacility.title} className="schedule-venue-image" />
           <div className="schedule-venue-meta">
@@ -283,11 +286,7 @@ export default function SlotBookingScreen() {
                 {selectedFacility.address}
               </span>
             </div>
-            <div className="schedule-venue-price">{selectedFacility.price} <small>/ hour</small></div>
-            <div className="schedule-venue-tags" aria-hidden="true">
-              <span><Orbit size={13} strokeWidth={2.3} />{selectedFacility.tag}</span>
-              <span><Lightbulb size={13} strokeWidth={2.3} />Map available</span>
-            </div>
+            <div className="schedule-venue-price">{selectedFacility.price} <small>/ hour base rate</small></div>
           </div>
         </section>
 
@@ -352,10 +351,10 @@ export default function SlotBookingScreen() {
           </div>
 
           <div className="schedule-legend" aria-hidden="true">
-            <span><i className="dot available" />Available</span>
-            <span><i className="dot few" />Few Slots</span>
-            <span><i className="dot full" />Fully Booked</span>
-            <span><i className="dot unavailable" />Unavailable</span>
+            <span><Circle className="dot available" fill="currentColor" strokeWidth={0} />Available</span>
+            <span><Circle className="dot few" fill="currentColor" strokeWidth={0} />Few Slots</span>
+            <span><Circle className="dot full" fill="currentColor" strokeWidth={0} />Fully Booked</span>
+            <span><Circle className="dot unavailable" fill="currentColor" strokeWidth={0} />Unavailable</span>
           </div>
         </section>
 
@@ -413,15 +412,15 @@ export default function SlotBookingScreen() {
           {state.selectedDate && !state.slotsLoading && state.slots.length > 0 && (
             <div className="schedule-slot-grid">
               {state.slots.map((s, index) => {
-                const durationUnavailable = !s.booked && !availableStartTimes.has(s.time);
-                const disabled = s.booked || durationUnavailable;
+                const durationUnavailable = !s.booked && !s.past && !availableStartTimes.has(s.time);
+                const disabled = s.booked || s.past || durationUnavailable;
                 const sel = !disabled && state.selectedTime === s.time;
-                const mood = s.booked ? 'full' : durationUnavailable ? 'unavailable' : index % 4 === 2 ? 'few' : 'available';
+                const mood = s.booked ? 'full' : s.past || durationUnavailable ? 'unavailable' : index % 4 === 2 ? 'few' : 'available';
                 const endTime = addMinutes(s.time, state.durationMins);
                 return (
                   <div
                     key={s.key}
-                    className={`schedule-slot${s.booked ? ' booked' : ''}${durationUnavailable ? ' unavailable' : ''}${sel ? ' selected' : ''} ${mood}`}
+                    className={`schedule-slot${s.booked ? ' booked' : ''}${s.past || durationUnavailable ? ' unavailable' : ''}${sel ? ' selected' : ''} ${mood}`}
                     role="button"
                     tabIndex={disabled ? -1 : 0}
                     aria-disabled={disabled}
@@ -439,7 +438,7 @@ export default function SlotBookingScreen() {
                   >
                     <div className="schedule-slot-main">{to12Hour(s.time)}</div>
                     <div className="schedule-slot-sub">- {to12Hour(endTime)}</div>
-                    <i className={`schedule-slot-dot ${mood}`} aria-hidden="true" />
+                    <Circle className={`schedule-slot-dot ${mood}`} fill="currentColor" strokeWidth={0} aria-hidden="true" />
                   </div>
                 );
               })}
@@ -469,7 +468,7 @@ export default function SlotBookingScreen() {
           <div className="schedule-total">
             <small>Total Amount</small>
             <strong>S${durationPrice}</strong>
-            <span>(Incl. taxes)</span>
+            <span>(Base rate only)</span>
           </div>
           <button
             className="schedule-continue-btn"

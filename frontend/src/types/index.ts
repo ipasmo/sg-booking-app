@@ -97,6 +97,7 @@ export interface TimeSlot {
   time: string;
   key: string;
   booked: boolean;
+  past: boolean;
 }
 
 export interface AppState {
@@ -135,7 +136,7 @@ export type Action =
   | { type: 'SET_TIME'; payload: string }
   | { type: 'SET_DURATION'; payload: number }
   | { type: 'SET_PACKAGE'; payload: string | null }
-  | { type: 'SET_PAY_METHOD'; payload: PayMethod }
+  | { type: 'SET_PAY_METHOD'; payload: PayMethod | null }
   | { type: 'SET_LOGGED_IN'; payload: { email: string; token: string } }
   | { type: 'SET_SLOTS_LOADING' }
   | { type: 'SET_SLOTS'; payload: TimeSlot[] }
@@ -152,6 +153,8 @@ export type Action =
 
 export interface BookingPayload {
   bookingType: BookingType;
+  sportId: SportId;
+  facilityCode: string;
   selectedDate: string;
   selectedTime: string;
   durationMins: number;
@@ -159,11 +162,30 @@ export interface BookingPayload {
   payMethod: PayMethod;
   grandTotal: number;
   receiptId: string;
+  stripePaymentIntentId?: string;
   customerEmail: string;
   facilityTitle: string | null;
   facilityAddress: string | null;
   facilityImageKey: SportFacilityImageKey | null;
   facilityTag: string | null;
+  lockToken?: string | null;
+}
+
+export interface StripePaymentIntentPayload {
+  bookingType: BookingType;
+  sportId?: SportId | null;
+  facilityCode?: string | null;
+  durationMins: number;
+  packageOption: string | null;
+  currency?: string;
+  receiptId: string;
+}
+
+export interface StripePaymentIntentResponse {
+  clientSecret: string;
+  paymentIntentId: string;
+  amount: number;
+  currency: string;
 }
 
 export interface LoginResponse {

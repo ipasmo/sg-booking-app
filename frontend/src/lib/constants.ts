@@ -1,8 +1,8 @@
 import type { Duration, Package } from '@/types';
 
-export const COURT_RATE   = 28;    // SGD per hour
-export const PLATFORM_FEE = 1.50;  // fixed SGD
-export const TAX_RATE     = 0.09;  // 9% GST
+export const COURT_RATE      = 28;     // SGD per hour
+export const PLATFORM_FEE   = 1.50;   // fixed SGD
+export const STRIPE_FEE_RATE = 0.035; // 3.5% of (booking fee + platform fee)
 
 export const DURATIONS: Duration[] = [
   { label: '60 mins', value: 60  },

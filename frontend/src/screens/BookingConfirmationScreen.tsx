@@ -192,7 +192,7 @@ export default function BookingConfirmationScreen() {
             <div>
               <small>{isPaid ? 'Paid Amount' : 'Amount Due in Cash'}</small>
               <strong>{sgd(state.grandTotal).replace('SGD', 'S$')}</strong>
-              <span>(Inclusive of taxes)</span>
+              <span>(Incl. all fees)</span>
             </div>
             <div>
               <small>Payment Method</small>

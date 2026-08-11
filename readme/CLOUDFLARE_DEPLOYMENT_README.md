@@ -64,8 +64,9 @@ This matches your target stack and keeps deployment simple.
    - Project root: `frontend`
    - Build command: `npm run build`
    - Output directory: `dist`
-4. Add env var in Pages:
+4. Add env vars in Pages:
    - `VITE_API_BASE_URL=https://api.yourdomain.com`
+   - `VITE_STRIPE_PUBLISHABLE_KEY=<stripe-publishable-key>`
 5. Deploy.
 
 ## Step C: Provision Neon PostgreSQL
@@ -87,6 +88,8 @@ This matches your target stack and keeps deployment simple.
    - `DATABASE_URL=<Neon Postgres URL>`
    - `DATABASE_SSL=true`
    - `FRONTEND_URL=https://<your-pages-domain>`
+   - `STRIPE_SECRET_KEY=<stripe-secret-key>`
+   - `STRIPE_CURRENCY=sgd`
 5. Deploy backend and map custom API domain:
    - `api.yourdomain.com`
 6. Verify:

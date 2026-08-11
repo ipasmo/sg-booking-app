@@ -3,6 +3,7 @@ import { ArrowRight, CalendarDays, Clock3, MapPin, ShieldCheck, Star } from 'luc
 import { useApp } from '@/context/AppContext';
 import { announce } from '@/lib/utils';
 import ScreenHeader from '@/components/ScreenHeader';
+import BookingStepBar from '@/components/BookingStepBar';
 import selectSportBackground from '@/assets/select_sport_bk.png';
 import cricketFacility from '@/assets/cricket_facility.png';
 import bowlingLaneCard from '@/assets/bowling_lane.png';
@@ -106,6 +107,8 @@ export default function SportFacilityScreen() {
       >
         <ScreenHeader onBack={() => navigate('sport-events')} backAriaLabel="Back to sport events" />
 
+        <BookingStepBar currentStep={1} />
+
         <section className="facility-select-hero">
           <h1>
             Book a <span className="gold">Facility</span>
@@ -138,7 +141,7 @@ export default function SportFacilityScreen() {
                 <div className="facility-select-card-title">{card.title}</div>
                 <div className="facility-select-card-price">
                   {card.price}
-                  <small>/ hour</small>
+                  <small>/ hour base rate</small>
                 </div>
               </div>
 

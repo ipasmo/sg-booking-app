@@ -36,6 +36,8 @@ DATABASE_URL=postgresql://<user>:<password>@<neon-host>/<db>?uselibpqcompat=true
 DATABASE_SSL=true
 DATABASE_CONNECTION_TIMEOUT_MS=5000
 DATABASE_POOL_MAX=10
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_CURRENCY=sgd
 ```
 
 4. Run DB bootstrap scripts.
@@ -85,6 +87,7 @@ From `backend/`:
 ```bash
 npm run db:migrate
 npm run db:seed
+npm run db:reset:seed
 ```
 
 Seed now creates:
@@ -188,10 +191,30 @@ Dev utility endpoint:
 - `DATABASE_CONNECTION_TIMEOUT_MS` default `5000`
 - `DATABASE_POOL_MAX` default `10`
 - `DEV_RESET_TOKEN` optional protection for `/api/dev/reset-seed`
+- `STRIPE_SECRET_KEY` required for card checkout and booking confirmation
+- `STRIPE_CURRENCY` optional, defaults to `sgd`
 
 ### Frontend (`frontend/.env.local`)
 
 - `VITE_API_BASE_URL` optional, defaults to proxy in local dev
+- `VITE_STRIPE_PUBLISHABLE_KEY` required for Stripe card checkout in the browser
+
+## Stripe card payments
+
+Card checkout uses Stripe Elements in the frontend and a backend PaymentIntent route:
+
+- Frontend: set `VITE_STRIPE_PUBLISHABLE_KEY` in `frontend/.env.local`
+- Backend: set `STRIPE_SECRET_KEY` (and optionally `STRIPE_CURRENCY=sgd`) in `backend/.env`
+
+Recommended local setup:
+
+1. Create a Stripe account and open the Dashboard -> Developers -> API keys page.
+2. Copy the publishable key into `frontend/.env.local`.
+3. Copy the secret key into `backend/.env`.
+4. Use Stripe test mode keys for local development and switch to live keys only for production.
+5. Verify the checkout flow by selecting a payment method and completing a test card payment.
+
+The backend creates a PaymentIntent for the booking total and the frontend confirms the card payment before the booking request is submitted.
 
 ## Environment-Specific Deployment
 
@@ -211,6 +234,8 @@ DATABASE_SSL=true
 DATABASE_CONNECTION_TIMEOUT_MS=5000
 DATABASE_POOL_MAX=10
 DEV_RESET_TOKEN=change-me
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_CURRENCY=sgd
 ```
 
 Frontend environment (`frontend/.env.local`):
@@ -218,6 +243,7 @@ Frontend environment (`frontend/.env.local`):
 ```env
 VITE_API_BASE_URL=
 VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
 ```
 
 Run sequence:

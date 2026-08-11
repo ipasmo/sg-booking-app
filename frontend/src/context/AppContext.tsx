@@ -238,7 +238,7 @@ export function useSelectBookingType() {
 export function useSelectPayMethod() {
   const { dispatch } = useApp();
   return useCallback(
-    (method: PayMethod) => dispatch({ type: 'SET_PAY_METHOD', payload: method }),
+    (method: PayMethod | null) => dispatch({ type: 'SET_PAY_METHOD', payload: method }),
     [dispatch]
   );
 }

@@ -69,6 +69,7 @@ export type SlotRow = {
   time: string;
   key: string;
   booked: boolean;
+  past: boolean;
 };
 
 type SlotWeekdayConfiguration = {
@@ -108,7 +109,23 @@ type BookingInput = {
   facilityAddress?: string | null;
   facilityImageKey?: SportFacilityRow['imageKey'] | null;
   facilityTag?: string | null;
+  lockToken?: string | null;
 };
+
+export type ConfigValueType = 'STRING' | 'INTEGER' | 'DECIMAL' | 'BOOLEAN' | 'JSON';
+
+export type SystemConfigRow = {
+  configType: string;
+  configKey: string;
+  configValue: string;
+  valueType: ConfigValueType;
+  description: string;
+  isActive: boolean;
+  isSystem: boolean;
+};
+
+// key → value map for a single config type
+export type ConfigMap = Record<string, string>;
 
 export type UserAuthRow = {
   id: string;
@@ -125,6 +142,13 @@ export class SlotAlreadyBookedError extends Error {
   constructor(slotDate: string, slotTime: string) {
     super(`Slot ${slotDate} ${slotTime} is already booked.`);
     this.name = 'SlotAlreadyBookedError';
+  }
+}
+
+export class SlotReservedError extends Error {
+  constructor(slotDate: string, slotTime: string) {
+    super(`Slot ${slotDate} ${slotTime} is temporarily reserved by another user. Please try again shortly.`);
+    this.name = 'SlotReservedError';
   }
 }
 
@@ -165,6 +189,54 @@ const DEFAULT_SPORT_ROWS = DEFAULT_SPORTS as SportRow[];
 const DEFAULT_SPORT_EVENT_ROWS = DEFAULT_SPORT_EVENTS as SportEventRow[];
 const DEFAULT_SPORT_FACILITY_TEMPLATE_ROWS = DEFAULT_SPORT_FACILITIES as SportFacilityTemplateRow[];
 const SLOT_INTERVAL_MINUTES = 30;
+const RESERVATION_TTL_MINUTES = 10; // fallback if DB config unavailable
+
+type SystemConfigSeed = {
+  configType: string;
+  configKey: string;
+  configValue: string;
+  valueType: ConfigValueType;
+  description: string;
+};
+
+const DEFAULT_SYSTEM_CONFIGS: SystemConfigSeed[] = [
+  // ── RESERVATION ──────────────────────────────────────────────
+  { configType: 'RESERVATION', configKey: 'SLOT_LOCK_DURATION_MINS',  configValue: '10',   valueType: 'INTEGER', description: 'Minutes a slot is held after reservation before auto-expiry' },
+  { configType: 'RESERVATION', configKey: 'MAX_LOCKS_PER_USER',       configValue: '1',    valueType: 'INTEGER', description: 'Maximum simultaneous active reservations per user' },
+
+  // ── PRICING ───────────────────────────────────────────────────
+  { configType: 'PRICING', configKey: 'PLATFORM_FEE_SGD',             configValue: '1.50', valueType: 'DECIMAL', description: 'Fixed platform fee per booking (SGD)' },
+  { configType: 'PRICING', configKey: 'STRIPE_FEE_RATE',              configValue: '0.035',valueType: 'DECIMAL', description: 'Stripe card processing fee rate (e.g. 0.035 = 3.5%)' },
+  { configType: 'PRICING', configKey: 'DEFAULT_COURT_RATE_PER_HOUR',  configValue: '28.00',valueType: 'DECIMAL', description: 'Fallback court rate per hour when facility price is unset (SGD)' },
+
+  // ── SLOTS ─────────────────────────────────────────────────────
+  { configType: 'SLOTS', configKey: 'SLOT_INTERVAL_MINS',             configValue: '30',   valueType: 'INTEGER', description: 'Duration of each bookable time slot in minutes' },
+  { configType: 'SLOTS', configKey: 'DEFAULT_WINDOW_START',           configValue: '08:00',valueType: 'STRING',  description: 'Default slot window opening time (HH:MM)' },
+  { configType: 'SLOTS', configKey: 'DEFAULT_WINDOW_END',             configValue: '22:00',valueType: 'STRING',  description: 'Default slot window closing time (HH:MM)' },
+
+  // ── BOOKING ───────────────────────────────────────────────────
+  { configType: 'BOOKING', configKey: 'MAX_ADVANCE_BOOKING_MONTHS',   configValue: '3',    valueType: 'INTEGER', description: 'How many months ahead a slot can be booked' },
+  { configType: 'BOOKING', configKey: 'MIN_DURATION_MINS',            configValue: '60',   valueType: 'INTEGER', description: 'Minimum allowed booking duration in minutes' },
+  { configType: 'BOOKING', configKey: 'CANCELLATION_WINDOW_HOURS',    configValue: '24',   valueType: 'INTEGER', description: 'Hours before start time within which cancellation earns a refund' },
+
+  // ── PAYMENTS ──────────────────────────────────────────────────
+  { configType: 'PAYMENTS', configKey: 'CURRENCY',                    configValue: 'sgd',  valueType: 'STRING',  description: 'ISO 4217 currency code for all payment processing' },
+  { configType: 'PAYMENTS', configKey: 'PAYMENT_SESSION_TIMEOUT_SECS',configValue: '300',  valueType: 'INTEGER', description: 'Seconds before an in-progress payment session expires' },
+  { configType: 'PAYMENTS', configKey: 'STRIPE_ENABLED',              configValue: 'true', valueType: 'BOOLEAN', description: 'Whether Stripe card payments are active' },
+  { configType: 'PAYMENTS', configKey: 'PAYNOW_ENABLED',              configValue: 'false',valueType: 'BOOLEAN', description: 'Whether PayNow payments are active' },
+  { configType: 'PAYMENTS', configKey: 'GRABPAY_ENABLED',             configValue: 'false',valueType: 'BOOLEAN', description: 'Whether GrabPay payments are active' },
+  { configType: 'PAYMENTS', configKey: 'GPAY_ENABLED',                configValue: 'false',valueType: 'BOOLEAN', description: 'Whether Google Pay payments are active' },
+
+  // ── NOTIFICATIONS ─────────────────────────────────────────────
+  { configType: 'NOTIFICATIONS', configKey: 'BOOKING_CONFIRMATION_ENABLED', configValue: 'true', valueType: 'BOOLEAN', description: 'Send booking confirmation email after successful payment' },
+  { configType: 'NOTIFICATIONS', configKey: 'REMINDER_HOURS_BEFORE',        configValue: '24',   valueType: 'INTEGER', description: 'Hours before booking to dispatch a reminder' },
+  { configType: 'NOTIFICATIONS', configKey: 'SUPPORT_EMAIL',                configValue: 'support@sportygo.sg', valueType: 'STRING', description: 'Customer-facing support email address' },
+
+  // ── APP ───────────────────────────────────────────────────────
+  { configType: 'APP', configKey: 'TIMEZONE',        configValue: 'Asia/Singapore', valueType: 'STRING', description: 'Primary application operating timezone' },
+  { configType: 'APP', configKey: 'APP_NAME',         configValue: 'SportyGo',       valueType: 'STRING', description: 'Application display name' },
+  { configType: 'APP', configKey: 'TERMS_VERSION',    configValue: '1.0',            valueType: 'STRING', description: 'Active terms and conditions version shown to users' },
+];
 const WEEKDAY_NAMES = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'] as const;
 const DEFAULT_WEEKDAY_SLOT_WINDOWS: Record<(typeof WEEKDAY_NAMES)[number], { startTime: string; endTime: string }> = {
   sunday: { startTime: '08:00', endTime: '22:00' },
@@ -190,6 +262,38 @@ function toTimeLabel(totalMinutes: number): string {
   return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
 }
 
+const SINGAPORE_TIME_ZONE = 'Asia/Singapore';
+
+type SingaporeDateTimeParts = {
+  date: string;
+  time: string;
+};
+
+function currentSingaporeDateTimeParts(base = new Date()): SingaporeDateTimeParts {
+  const dateParts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: SINGAPORE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(base).map((part) => [part.type, part.value]));
+
+  const timeParts = Object.fromEntries(new Intl.DateTimeFormat('en-SG', {
+    timeZone: SINGAPORE_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(base).map((part) => [part.type, part.value]));
+
+  return {
+    date: `${dateParts.year}-${dateParts.month}-${dateParts.day}`,
+    time: `${timeParts.hour}:${timeParts.minute}`,
+  };
+}
+
+function isPastOrCurrentSlot(dateStr: string, time: string, reference: SingaporeDateTimeParts = currentSingaporeDateTimeParts()): boolean {
+  return dateStr === reference.date && toTotalMinutes(time) <= toTotalMinutes(reference.time);
+}
+
 function weekdayNameForDate(dateStr: string): (typeof WEEKDAY_NAMES)[number] {
   const [year, month, day] = dateStr.split('-').map(Number);
   const dayIndex = new Date(Date.UTC(year, month - 1, day)).getUTCDay();
@@ -207,6 +311,7 @@ function generateDailySlots(dateStr: string, slotStartTime: string, slotEndTime:
       time,
       key: `${dateStr}_${time}`,
       booked: false,
+      past: false,
     });
   }
 
@@ -382,6 +487,18 @@ async function seedSportFacilities(client: PoolClient): Promise<void> {
        deleted_at = NULL`,
     values
   );
+}
+
+async function seedSystemConfigs(client: PoolClient): Promise<void> {
+  for (const cfg of DEFAULT_SYSTEM_CONFIGS) {
+    await client.query(
+      `INSERT INTO system_configs
+         (config_type, config_key, config_value, value_type, description, created_by, updated_by)
+       VALUES ($1, $2, $3, $4, $5, 'system', 'system')
+       ON CONFLICT (config_type, config_key) DO NOTHING`,
+      [cfg.configType, cfg.configKey, cfg.configValue, cfg.valueType, cfg.description]
+    );
+  }
 }
 
 async function ensureSchema(client: PoolClient): Promise<void> {
@@ -728,6 +845,51 @@ async function ensureSchema(client: PoolClient): Promise<void> {
   await client.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS facility_address TEXT NULL');
   await client.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS facility_image_key TEXT NULL');
   await client.query('ALTER TABLE bookings ADD COLUMN IF NOT EXISTS facility_tag TEXT NULL');
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS slot_reservations (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      slot_date DATE NOT NULL,
+      slot_time TIME NOT NULL,
+      customer_email TEXT NOT NULL,
+      lock_token TEXT NOT NULL UNIQUE,
+      expires_at TIMESTAMPTZ NOT NULL,
+      status TEXT NOT NULL DEFAULT 'pending'
+        CHECK (status IN ('pending', 'confirmed', 'released')),
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    )
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_slot_reservations_lookup
+    ON slot_reservations (slot_date, slot_time, status, expires_at)
+  `);
+
+  await client.query(`
+    CREATE TABLE IF NOT EXISTS system_configs (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      config_type TEXT NOT NULL,
+      config_key TEXT NOT NULL,
+      config_value TEXT NOT NULL,
+      value_type TEXT NOT NULL DEFAULT 'STRING'
+        CHECK (value_type IN ('STRING', 'INTEGER', 'DECIMAL', 'BOOLEAN', 'JSON')),
+      description TEXT NOT NULL DEFAULT '',
+      is_active BOOLEAN NOT NULL DEFAULT TRUE,
+      is_system BOOLEAN NOT NULL DEFAULT TRUE,
+      created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+      deleted_at TIMESTAMPTZ NULL,
+      created_by TEXT NOT NULL DEFAULT 'system',
+      updated_by TEXT NOT NULL DEFAULT 'system',
+      UNIQUE (config_type, config_key)
+    )
+  `);
+
+  await client.query(`
+    CREATE INDEX IF NOT EXISTS idx_system_configs_type
+    ON system_configs (config_type) WHERE deleted_at IS NULL AND is_active = TRUE
+  `);
 }
 
 export async function ensureDatabaseReady(): Promise<void> {
@@ -975,6 +1137,7 @@ export async function listSlotsForDate(dateStr: string): Promise<SlotRow[]> {
   }
 
   return withDatabaseClient(async (client) => {
+    const currentDateTime = currentSingaporeDateTimeParts();
     await ensureSlotsForDate(client, dateStr);
     const result = await client.query<{ slot_time: string; is_booked: boolean }>(
       `SELECT s.slot_time::text AS slot_time,
@@ -986,6 +1149,13 @@ export async function listSlotsForDate(dateStr: string): Promise<SlotRow[]> {
                     AND b.deleted_at IS NULL
                     AND s.slot_time >= b.slot_time
                     AND s.slot_time < (b.slot_time + make_interval(mins => b.duration_mins))
+                ) OR EXISTS (
+                  SELECT 1
+                  FROM slot_reservations sr
+                  WHERE sr.slot_date = s.slot_date
+                    AND sr.slot_time = s.slot_time
+                    AND sr.status = 'pending'
+                    AND sr.expires_at > NOW()
                 )
               ) AS is_booked
        FROM slots s
@@ -999,6 +1169,7 @@ export async function listSlotsForDate(dateStr: string): Promise<SlotRow[]> {
       time: row.slot_time.slice(0, 5),
       key: `${dateStr}_${row.slot_time.slice(0, 5)}`,
       booked: row.is_booked,
+      past: isPastOrCurrentSlot(dateStr, row.slot_time.slice(0, 5), currentDateTime),
     }));
   });
 }
@@ -1013,6 +1184,28 @@ export async function saveBooking(input: BookingInput): Promise<void> {
   await withDatabaseClient(async (client) => {
     await client.query('BEGIN');
     try {
+      const currentDateTime = currentSingaporeDateTimeParts();
+      if (isPastOrCurrentSlot(input.selectedDate, input.selectedTime, currentDateTime)) {
+        // Allow booking to proceed if the user holds a valid reservation (locked before slot became past)
+        let bypassPastCheck = false;
+        if (input.lockToken) {
+          const lockResult = await client.query<{ id: string }>(
+            `SELECT id FROM slot_reservations
+             WHERE lock_token = $1
+               AND slot_date = $2
+               AND slot_time = $3::time
+               AND LOWER(BTRIM(customer_email)) = $4
+               AND status = 'pending'
+               AND expires_at > NOW()`,
+            [input.lockToken, input.selectedDate, input.selectedTime, customerEmail]
+          );
+          bypassPastCheck = (lockResult.rowCount ?? 0) > 0;
+        }
+        if (!bypassPastCheck) {
+          throw new SlotAlreadyBookedError(input.selectedDate, input.selectedTime);
+        }
+      }
+
       await ensureSlotsForDate(client, input.selectedDate);
       const requiredSegments = Math.max(1, Math.ceil(input.durationMins / SLOT_INTERVAL_MINUTES));
 
@@ -1114,6 +1307,14 @@ export async function saveBooking(input: BookingInput): Promise<void> {
           customerEmail,
         ]
       );
+
+      // Mark reservation confirmed so it stays consistent with the booking record
+      if (input.lockToken) {
+        await client.query(
+          `UPDATE slot_reservations SET status = 'confirmed', updated_at = NOW() WHERE lock_token = $1`,
+          [input.lockToken]
+        );
+      }
 
       await client.query('COMMIT');
     } catch (error) {
@@ -1452,6 +1653,7 @@ export async function seedDatabase(): Promise<void> {
       await seedSports(client);
       await seedSportEvents(client);
       await seedSportFacilities(client);
+      await seedSystemConfigs(client);
 
       for (const weekdayName of WEEKDAY_NAMES) {
         const window = DEFAULT_WEEKDAY_SLOT_WINDOWS[weekdayName];
@@ -1500,4 +1702,176 @@ export async function resetDatabaseAndSeed(): Promise<void> {
   });
 
   await seedDatabase();
+}
+
+// ─── System Config Service ────────────────────────────────────
+
+let _configCache: Map<string, string> | null = null;
+let _configCacheExpiry = 0;
+const CONFIG_CACHE_TTL_MS = 5 * 60 * 1000; // 5-minute TTL; call invalidateConfigCache() after any write
+
+function _cacheKey(type: string, key: string): string {
+  return `${type}::${key}`;
+}
+
+async function _reloadConfigCache(): Promise<void> {
+  if (!pool) return;
+  try {
+    const rows = await query<{ config_type: string; config_key: string; config_value: string }>(
+      `SELECT config_type, config_key, config_value
+       FROM system_configs
+       WHERE deleted_at IS NULL AND is_active = TRUE`
+    );
+    _configCache = new Map(rows.map((r) => [_cacheKey(r.config_type, r.config_key), r.config_value]));
+    _configCacheExpiry = Date.now() + CONFIG_CACHE_TTL_MS;
+  } catch {
+    // Table may not exist during the very first schema creation run; use empty cache briefly
+    _configCache = new Map();
+    _configCacheExpiry = Date.now() + 30_000;
+  }
+}
+
+export function invalidateConfigCache(): void {
+  _configCache = null;
+  _configCacheExpiry = 0;
+}
+
+async function _ensureCache(): Promise<void> {
+  if (!_configCache || Date.now() >= _configCacheExpiry) {
+    await _reloadConfigCache();
+  }
+}
+
+export async function getConfigValue(configType: string, configKey: string): Promise<string | null> {
+  if (!pool) return null;
+  await _ensureCache();
+  return _configCache?.get(_cacheKey(configType, configKey)) ?? null;
+}
+
+export async function getConfigByType(configType: string): Promise<ConfigMap> {
+  if (!pool) return {};
+  await _ensureCache();
+  const result: ConfigMap = {};
+  for (const [k, v] of (_configCache ?? [])) {
+    const [type, key] = k.split('::');
+    if (type === configType) result[key] = v;
+  }
+  return result;
+}
+
+export async function getAllConfigs(): Promise<Record<string, ConfigMap>> {
+  if (!pool) return {};
+  await _ensureCache();
+  const result: Record<string, ConfigMap> = {};
+  for (const [k, v] of (_configCache ?? [])) {
+    const separatorIdx = k.indexOf('::');
+    const type = k.slice(0, separatorIdx);
+    const key = k.slice(separatorIdx + 2);
+    if (!result[type]) result[type] = {};
+    result[type][key] = v;
+  }
+  return result;
+}
+
+export async function getConfigNumber(configType: string, configKey: string, fallback: number): Promise<number> {
+  const raw = await getConfigValue(configType, configKey);
+  if (raw === null) return fallback;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : fallback;
+}
+
+export async function getConfigBoolean(configType: string, configKey: string, fallback: boolean): Promise<boolean> {
+  const raw = await getConfigValue(configType, configKey);
+  if (raw === null) return fallback;
+  return raw.trim().toLowerCase() === 'true';
+}
+
+export async function reserveSlot(
+  slotDate: string,
+  slotTime: string,
+  durationMins: number,
+  customerEmail: string,
+  lockToken: string
+): Promise<void> {
+  if (!pool) return;
+
+  // Read TTL from config table; fall back to hardcoded constant if unavailable
+  const ttlMins = await getConfigNumber('RESERVATION', 'SLOT_LOCK_DURATION_MINS', RESERVATION_TTL_MINUTES);
+
+  await withDatabaseClient(async (client) => {
+    await client.query('BEGIN');
+    try {
+      // Reject if the slot time has already passed
+      const currentDateTime = currentSingaporeDateTimeParts();
+      if (isPastOrCurrentSlot(slotDate, slotTime, currentDateTime)) {
+        throw new SlotAlreadyBookedError(slotDate, slotTime);
+      }
+
+      // Lock the slot rows to prevent concurrent reservations
+      const requiredSegments = Math.max(1, Math.ceil(durationMins / SLOT_INTERVAL_MINUTES));
+      const lockResult = await client.query<{ id: string; is_booked: boolean }>(
+        `SELECT id, is_booked
+         FROM slots
+         WHERE slot_date = $1
+           AND slot_time >= $2::time
+           AND slot_time < ($2::time + make_interval(mins => $3))
+           AND deleted_at IS NULL
+         ORDER BY slot_time ASC
+         FOR UPDATE`,
+        [slotDate, slotTime, durationMins]
+      );
+
+      if ((lockResult.rowCount ?? 0) < requiredSegments || lockResult.rows.some((r) => r.is_booked)) {
+        throw new SlotAlreadyBookedError(slotDate, slotTime);
+      }
+
+      // Check for an active reservation by a different user
+      const conflictResult = await client.query<{ id: string }>(
+        `SELECT id FROM slot_reservations
+         WHERE slot_date = $1
+           AND slot_time = $2::time
+           AND status = 'pending'
+           AND expires_at > NOW()
+           AND LOWER(BTRIM(customer_email)) != $3`,
+        [slotDate, slotTime, customerEmail]
+      );
+
+      if ((conflictResult.rowCount ?? 0) > 0) {
+        throw new SlotReservedError(slotDate, slotTime);
+      }
+
+      // Release any stale reservation by this user for the same slot
+      await client.query(
+        `UPDATE slot_reservations
+         SET status = 'released', updated_at = NOW()
+         WHERE slot_date = $1 AND slot_time = $2::time
+           AND LOWER(BTRIM(customer_email)) = $3 AND status = 'pending'`,
+        [slotDate, slotTime, customerEmail]
+      );
+
+      await client.query(
+        `INSERT INTO slot_reservations (slot_date, slot_time, customer_email, lock_token, expires_at)
+         VALUES ($1, $2::time, $3, $4, NOW() + make_interval(mins => $5))`,
+        [slotDate, slotTime, customerEmail, lockToken, ttlMins]
+      );
+
+      await client.query('COMMIT');
+    } catch (error) {
+      await client.query('ROLLBACK');
+      throw error;
+    }
+  });
+}
+
+export async function releaseReservation(lockToken: string, customerEmail: string): Promise<void> {
+  if (!pool) return;
+
+  await query(
+    `UPDATE slot_reservations
+     SET status = 'released', updated_at = NOW()
+     WHERE lock_token = $1
+       AND LOWER(BTRIM(customer_email)) = $2
+       AND status = 'pending'`,
+    [lockToken, customerEmail]
+  );
 }

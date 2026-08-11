@@ -11,6 +11,8 @@ import type {
   SportEventsResponse,
   SportEventTemplate,
   SportsResponse,
+  StripePaymentIntentPayload,
+  StripePaymentIntentResponse,
   SportId,
   SportOption,
 } from '@/types';
@@ -27,6 +29,12 @@ const cachedSportEventsResponse = new Map<SportId, SportEventsResponse>();
 const cachedSportEventsRequest = new Map<SportId, Promise<SportEventsResponse>>();
 const cachedSportFacilitiesResponse = new Map<SportId, SportFacilitiesResponse>();
 const cachedSportFacilitiesRequest = new Map<SportId, Promise<SportFacilitiesResponse>>();
+const SINGAPORE_TIME_ZONE = 'Asia/Singapore';
+
+type SingaporeDateTimeParts = {
+  date: string;
+  time: string;
+};
 
 function isNetworkError(error: unknown): boolean {
   return error instanceof TypeError && /failed to fetch|networkerror|load failed/i.test(error.message);
@@ -50,16 +58,49 @@ function isPreBooked(date: string, time: string): boolean {
   return Math.abs(hash) % 4 === 0;
 }
 
+function toMinutes(time: string): number {
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + minute;
+}
+
+function currentSingaporeDateTimeParts(base = new Date()): SingaporeDateTimeParts {
+  const dateParts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: SINGAPORE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(base).map((part) => [part.type, part.value]));
+
+  const timeParts = Object.fromEntries(new Intl.DateTimeFormat('en-SG', {
+    timeZone: SINGAPORE_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(base).map((part) => [part.type, part.value]));
+
+  return {
+    date: `${dateParts.year}-${dateParts.month}-${dateParts.day}`,
+    time: `${timeParts.hour}:${timeParts.minute}`,
+  };
+}
+
+function isPastOrCurrentSlot(date: string, time: string, reference: SingaporeDateTimeParts = currentSingaporeDateTimeParts()): boolean {
+  return date === reference.date && toMinutes(time) <= toMinutes(reference.time);
+}
+
 function buildLocalSlots(date: string): SlotsResponse {
   const slots: SlotsResponse['slots'] = [];
+  const currentDateTime = currentSingaporeDateTimeParts();
 
   for (let h = 8; h < 22; h++) {
     for (let m = 0; m < 60; m += 30) {
       const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      const past = isPastOrCurrentSlot(date, time, currentDateTime);
       slots.push({
         time,
         key: `${date}_${time}`,
         booked: isPreBooked(date, time),
+        past,
       });
     }
   }
@@ -302,6 +343,42 @@ export async function fetchSportFacilities(sportId: SportId): Promise<SportFacil
 }
 
 // ─── Bookings ─────────────────────────────────────────────────
+
+export interface SlotReservationResponse {
+  lockToken: string;
+  expiresAt: string;
+}
+
+export async function reserveSlotForBooking(
+  payload: { selectedDate: string; selectedTime: string; durationMins: number },
+  token: string
+): Promise<SlotReservationResponse> {
+  return request<SlotReservationResponse>('/api/slots/reserve', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function releaseSlotReservation(lockToken: string, token: string): Promise<void> {
+  // Best-effort: lock expires automatically if this fails
+  await request('/api/slots/release', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ lockToken }),
+  }).catch(() => undefined);
+}
+
+export async function createStripePaymentIntent(
+  payload: StripePaymentIntentPayload,
+  token: string
+): Promise<StripePaymentIntentResponse> {
+  return request<StripePaymentIntentResponse>('/api/payments/stripe/payment-intent', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
 
 export async function createBooking(
   payload: BookingPayload,
