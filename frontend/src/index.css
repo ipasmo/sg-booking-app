@@ -4154,8 +4154,15 @@ input { font-family: inherit; }
   padding: 10px;
 }
 .bookings-card-main-v2 {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bookings-card-top-v2 {
+  position: relative;
   display: grid;
-  grid-template-columns: 104px minmax(0, 1fr) minmax(88px, auto);
+  grid-template-columns: 104px minmax(0, 1fr) auto;
+  align-items: start;
   gap: 10px;
 }
 .bookings-card-info-v2 {
@@ -4172,6 +4179,7 @@ input { font-family: inherit; }
   color: #f2f6fc;
   font-size: 1.02rem;
   line-height: 1.2;
+  margin-bottom: 7px;
 }
 .bookings-card-row-v2 {
   display: flex;
@@ -4181,9 +4189,14 @@ input { font-family: inherit; }
   margin-bottom: 4px;
 }
 .bookings-status-v2 {
+  position: absolute;
+  left: 50%;
+  top: 4px;
+  transform: translateX(-50%);
   font-size: 0.82rem;
   font-weight: 700;
   white-space: nowrap;
+  z-index: 1;
 }
 .bookings-status-v2.upcoming,
 .bookings-status-v2.completed {
@@ -4196,6 +4209,20 @@ input { font-family: inherit; }
   align-items: center;
   gap: 6px;
   margin-bottom: 2px;
+}
+.bookings-card-info-v2 p.bookings-location-v2 svg {
+  color: #d4a556;
+  flex-shrink: 0;
+}
+.bookings-location-link-v2 {
+  display: inline-flex;
+  align-items: center;
+  color: #d4a556;
+  flex-shrink: 0;
+}
+.bookings-location-link-v2:hover,
+.bookings-location-link-v2:focus-visible {
+  color: #f0c878;
 }
 .bookings-tags-v2 {
   margin-top: 6px;
@@ -4213,6 +4240,7 @@ input { font-family: inherit; }
 .bookings-card-price-v2 {
   text-align: right;
   min-width: 0;
+  padding-top: 2px;
 }
 .bookings-card-price-v2 strong {
   display: block;

@@ -41,6 +41,7 @@ type BookingCard = {
   bookingType: BookingHistoryItem['bookingType'];
   title: string;
   location: string;
+  mapLocationUrl: string;
   dateText: string;
   timeText: string;
   durationMins: number;
@@ -49,7 +50,6 @@ type BookingCard = {
   statusType: 'upcoming' | 'completed';
   payMethod: BookingHistoryItem['payMethod'];
   paymentMethod: BookingHistoryItem['paymentMethod'];
-  tags: [string, string];
   image: string;
 };
 
@@ -98,13 +98,14 @@ function mapHistoryToCard(item: BookingHistoryItem): BookingCard {
   const statusLabel = item.status === 'cash_pending' ? 'Pending Cash' : isPast ? 'Completed' : 'Upcoming';
   const fallbackTitle = isCoaching ? 'Coaching Session' : 'Cricket Net 2';
   const fallbackLocation = 'Kallang, Singapore';
-  const fallbackTags: [string, string] = isCoaching ? ['Coaching', 'Package'] : ['Indoor', 'Net Lane'];
+  const location = item.facilityAddress ?? fallbackLocation;
 
   return {
     id: item.receiptId,
     bookingType: item.bookingType,
     title: item.facilityTitle ?? fallbackTitle,
-    location: item.facilityAddress ?? fallbackLocation,
+    location,
+    mapLocationUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location)}`,
     dateText: formatDateForCard(item.slotDate),
     timeText: `${to12Hour(start)} - ${to12Hour(end)} (${item.durationMins} min)`,
     durationMins: item.durationMins,
@@ -113,7 +114,6 @@ function mapHistoryToCard(item: BookingHistoryItem): BookingCard {
     statusType: isPast ? 'completed' : 'upcoming',
     payMethod: item.payMethod,
     paymentMethod: item.paymentMethod,
-    tags: item.facilityTag ? [isCoaching ? 'Coaching' : 'Facility', item.facilityTag] : fallbackTags,
     image: item.facilityImageKey ? FACILITY_IMAGES[item.facilityImageKey] : isCoaching ? cricketGear : indoorCricketCard,
   };
 }
@@ -135,27 +135,31 @@ function BookingCardView({
   return (
     <article className="bookings-card-v2">
       <div className="bookings-card-main-v2">
-        <img src={booking.image} alt={booking.title} className="bookings-card-image-v2" />
-
-        <div className="bookings-card-info-v2">
-          <div className="bookings-card-row-v2">
-            <h3>{booking.title}</h3>
-            <span className={`bookings-status-v2 ${booking.statusType}`}>{booking.statusLabel}</span>
-          </div>
-
-          <p><MapPin size={14} strokeWidth={2.1} />{booking.location}</p>
-          <p><CalendarDays size={14} strokeWidth={2.1} />{booking.dateText}</p>
-          <p><Clock3 size={14} strokeWidth={2.1} />{booking.timeText}</p>
-
-          <div className="bookings-tags-v2">
-            <span>{booking.tags[0]}</span>
-            <span>{booking.tags[1]}</span>
+        <div className="bookings-card-top-v2">
+          <img src={booking.image} alt={booking.title} className="bookings-card-image-v2" />
+          <span className={`bookings-status-v2 ${booking.statusType}`}>{booking.statusLabel}</span>
+          <div className="bookings-card-price-v2">
+            <strong>{booking.amount}</strong>
+            <small>(Incl. taxes)</small>
           </div>
         </div>
 
-        <div className="bookings-card-price-v2">
-          <strong>{booking.amount}</strong>
-          <small>(Incl. taxes)</small>
+        <div className="bookings-card-info-v2">
+          <h3>{booking.title}</h3>
+          <p className="bookings-location-v2">
+            <a
+              className="bookings-location-link-v2"
+              href={booking.mapLocationUrl}
+              target="_blank"
+              rel="noreferrer"
+              aria-label={`Open map for ${booking.title}`}
+            >
+              <MapPin size={14} strokeWidth={2.1} />
+            </a>
+            {booking.location}
+          </p>
+          <p><CalendarDays size={14} strokeWidth={2.1} />{booking.dateText}</p>
+          <p><Clock3 size={14} strokeWidth={2.1} />{booking.timeText}</p>
         </div>
       </div>
 
@@ -241,7 +245,18 @@ function BookingDetailsDialog({ booking, onClose }: { booking: BookingCard; onCl
           <img src={booking.image} alt={booking.title} />
           <div>
             <h3>{booking.title}</h3>
-            <p><MapPin size={15} strokeWidth={2.2} />{booking.location}</p>
+            <p>
+              <a
+                className="bookings-location-link-v2"
+                href={booking.mapLocationUrl}
+                target="_blank"
+                rel="noreferrer"
+                aria-label={`Open map for ${booking.title}`}
+              >
+                <MapPin size={15} strokeWidth={2.2} />
+              </a>
+              {booking.location}
+            </p>
             <span className={`bookings-status-v2 ${booking.statusType}`}>{booking.statusLabel}</span>
           </div>
         </div>
@@ -280,10 +295,6 @@ function BookingDetailsDialog({ booking, onClose }: { booking: BookingCard; onCl
           </button>
         </div>
 
-        <div className="booking-details-tags" aria-label="Booking categories">
-          {booking.tags.map((tag) => <span key={tag}>{tag}</span>)}
-        </div>
-
         <button type="button" className="booking-details-done" onClick={onClose}>Done</button>
       </section>
     </div>
@@ -291,7 +302,7 @@ function BookingDetailsDialog({ booking, onClose }: { booking: BookingCard; onCl
 }
 
 export default function ViewBookingsScreen() {
-  const { navigate, state } = useApp();
+  const { state } = useApp();
   const [tab, setTab] = useState<BookingTab>('upcoming');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -337,15 +348,7 @@ export default function ViewBookingsScreen() {
     <div className="page-container page-container--immersive screen-fade-enter">
       <div className="bookings-phone" style={{ backgroundImage: `url(${pageBackground})` }}>
         <div className="bookings-scroll-v2">
-          <ScreenHeader
-            onBack={() => navigate('home')}
-            backAriaLabel="Back to home"
-            rightSlot={(
-              <button type="button" className="bookings-calendar-btn-v2" aria-label="Calendar">
-                <CalendarDays size={20} strokeWidth={2.2} />
-              </button>
-            )}
-          />
+          <ScreenHeader hideBack />
 
           <section className="bookings-title-v2">
             <h1>My Bookings</h1>

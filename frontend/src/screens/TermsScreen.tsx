@@ -42,8 +42,6 @@ const FACILITY_IMAGES = {
   'outdoor-field': cricketFacility,
 } as const;
 
-const FACILITY_RATE_PER_HOUR = 45;
-
 type TermItem = {
   title: string;
   body: string;
@@ -95,7 +93,7 @@ function addMinutes(time: string, minutes: number): string {
 
 function parseRate(price: string): number {
   const parsed = Number(price.replace(/[^0-9.]/g, ''));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : FACILITY_RATE_PER_HOUR;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
 export default function TermsScreen() {
@@ -107,7 +105,7 @@ export default function TermsScreen() {
   const selectedFacilityTitle = state.selectedFacility?.title ?? `${selectedSportLabel} Facility`;
   const selectedFacilityAddress = state.selectedFacility?.address ?? 'Location not available';
   const selectedFacilityImage = state.selectedFacility ? FACILITY_IMAGES[state.selectedFacility.imageKey] : indoorCricketCard;
-  const selectedRatePerHour = state.selectedFacility ? parseRate(state.selectedFacility.price) : FACILITY_RATE_PER_HOUR;
+  const selectedRatePerHour = state.selectedFacility ? parseRate(state.selectedFacility.price) : 0;
   const selectedDateText = state.selectedDate ? formatDateShort(state.selectedDate) : 'Not selected';
 
   const selectedEndTime = state.selectedTime ? addMinutes(state.selectedTime, state.durationMins) : null;

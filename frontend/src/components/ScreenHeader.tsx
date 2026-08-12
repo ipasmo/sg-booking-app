@@ -3,27 +3,31 @@ import type { ReactNode } from 'react';
 import logoImage from '@/assets/logo.png';
 
 type ScreenHeaderProps = {
-  onBack: () => void;
+  onBack?: () => void;
   backAriaLabel?: string;
   rightSlot?: ReactNode;
+  hideBack?: boolean;
 };
 
 export default function ScreenHeader({
   onBack,
   backAriaLabel = 'Back',
   rightSlot,
+  hideBack = false,
 }: ScreenHeaderProps) {
   return (
     <div className="screen-header">
       <div className="screen-header-left">
-        <button
-          type="button"
-          className="screen-back-btn"
-          aria-label={backAriaLabel}
-          onClick={onBack}
-        >
-          <ChevronLeft size={21} strokeWidth={2.8} />
-        </button>
+        {!hideBack && onBack ? (
+          <button
+            type="button"
+            className="screen-back-btn"
+            aria-label={backAriaLabel}
+            onClick={onBack}
+          >
+            <ChevronLeft size={21} strokeWidth={2.8} />
+          </button>
+        ) : null}
       </div>
 
       <div className="sport-events-logo-wrap screen-header-logo-wrap">

@@ -41,6 +41,82 @@ router.get('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
   res.json({ bookings });
 });
 
+// POST /api/bookings/mock (requires Bearer token; development fallback only)
+router.post('/mock', authMiddleware, async (req: AuthenticatedRequest, res) => {
+  const customerEmail = req.user?.email?.trim().toLowerCase();
+  if (!customerEmail) {
+    res.status(401).json({ error: 'Authorization token is required.' });
+    return;
+  }
+
+  const payload = req.body as {
+    bookingType: string;
+    sportId?: SportRow['id'] | null;
+    facilityCode?: string | null;
+    selectedDate: string;
+    selectedTime: string;
+    durationMins: number;
+    packageOption: string | null;
+    grandTotal: number;
+    receiptId: string;
+    facilityTitle?: string | null;
+    facilityAddress?: string | null;
+    facilityImageKey?: string | null;
+    facilityTag?: string | null;
+    lockToken?: string | null;
+  };
+
+  if (!payload.bookingType || !payload.selectedDate || !payload.selectedTime || !payload.receiptId
+    || !Number.isFinite(payload.durationMins) || payload.durationMins <= 0) {
+    res.status(400).json({ error: 'Incomplete mock booking details.' });
+    return;
+  }
+
+  const pricing = await calculateBookingPricing({
+    bookingType: payload.bookingType,
+    sportId: payload.sportId ?? null,
+    facilityCode: payload.facilityCode ?? null,
+    durationMins: payload.durationMins,
+    packageOption: payload.packageOption,
+    payMethod: 'STRIPE',
+  }).catch(() => null);
+
+  if (!pricing) {
+    res.status(400).json({ error: 'Unable to calculate the mock booking amount.' });
+    return;
+  }
+
+  try {
+    await saveBooking({
+      bookingType: payload.bookingType,
+      selectedDate: payload.selectedDate,
+      selectedTime: payload.selectedTime,
+      durationMins: payload.durationMins,
+      packageOption: payload.packageOption,
+      payMethod: 'STRIPE',
+      grandTotal: pricing.grandTotal,
+      receiptId: payload.receiptId,
+      customerEmail,
+      bookingStatus: 'confirmed',
+      paymentMethod: 'ONLINE',
+      facilityTitle: payload.facilityTitle ?? null,
+      facilityAddress: payload.facilityAddress ?? null,
+      facilityImageKey: toFacilityImageKey(payload.facilityImageKey),
+      facilityTag: payload.facilityTag?.trim() || null,
+      lockToken: payload.lockToken ?? null,
+    });
+  } catch (error) {
+    if (error instanceof SlotAlreadyBookedError) {
+      res.status(409).json({ error: 'This slot is no longer available.' });
+      return;
+    }
+    res.status(500).json({ error: 'Unable to create mock booking.' });
+    return;
+  }
+
+  res.json({ receiptId: payload.receiptId, status: 'success', paymentMethod: 'ONLINE' });
+});
+
 // POST /api/bookings  (requires Bearer token)
 router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
   const {
@@ -158,8 +234,8 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
       bookingStatus = 'confirmed';
       paymentMethod = 'ONLINE';
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unable to verify Stripe payment.';
-      res.status(502).json({ error: message });
+      console.error('[bookings] Stripe payment verification failed:', error);
+      res.status(502).json({ error: 'Unable to verify card payment. Please contact support if the charge was completed.' });
       return;
     }
   } else {

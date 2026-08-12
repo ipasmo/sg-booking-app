@@ -23,7 +23,7 @@ import {
   type StripeCardNumberElementChangeEvent,
   type StripeCardNumberElementOptions,
 } from '@stripe/stripe-js';
-import { createBooking, createStripePaymentIntent, reserveSlotForBooking, releaseSlotReservation } from '@/lib/api';
+import { createBooking, createMockBooking, createStripePaymentIntent, reserveSlotForBooking, releaseSlotReservation } from '@/lib/api';
 import { PACKAGES, PLATFORM_FEE } from '@/lib/constants';
 import { calcPricing, parseRate, sgd } from '@/lib/pricing';
 import { formatDateShort, makeReceiptId, announce } from '@/lib/utils';
@@ -457,14 +457,60 @@ function CheckoutScreenContent() {
 
   const selectedPackageLabel = PACKAGES.find(p => p.id === state.packageOption)?.label ?? 'No package selected';
 
-  function handleMockPay() {
-    if (!state.bookingType || !state.selectedDate || !state.selectedTime) return;
+  async function handleMockPay() {
+    if (!state.bookingType || !state.selectedDate || !state.selectedTime || !state.authToken) return;
+    setPaying(true);
+    dispatch({ type: 'SET_PAYMENT_ERROR', payload: null });
+    let mockLockToken: string | undefined;
+
+    try {
+      const reservation = await reserveSlotForBooking(
+        {
+          selectedDate: state.selectedDate,
+          selectedTime: state.selectedTime,
+          durationMins: state.durationMins,
+        },
+        state.authToken
+      );
+      mockLockToken = reservation.lockToken;
     const receiptId = makeReceiptId();
-    dispatch({ type: 'SET_PRICING', payload: pricing });
-    dispatch({ type: 'SET_RECEIPT', payload: receiptId });
-    dispatch({ type: 'SET_PAYMENT_STATUS', payload: 'success' });
-    announce('Mock payment successful. Booking confirmed.');
-    navigate('booking-confirmation');
+      const mockPricing = calcPricing(
+        state.bookingType,
+        state.durationMins,
+        state.packageOption,
+        parseRate(state.selectedFacility?.price),
+        'STRIPE'
+      );
+      const result = await createMockBooking({
+        bookingType: state.bookingType,
+        sportId: state.selectedSport ?? 'cricket',
+        facilityCode: state.selectedFacility?.code ?? '',
+        selectedDate: state.selectedDate,
+        selectedTime: state.selectedTime,
+        durationMins: state.durationMins,
+        packageOption: state.packageOption,
+        payMethod: 'STRIPE',
+        grandTotal: mockPricing.grandTotal,
+        receiptId,
+        stripePaymentIntentId: undefined,
+        lockToken: mockLockToken,
+        customerEmail: state.customerEmail,
+        facilityTitle: state.selectedFacility?.title ?? null,
+        facilityAddress: state.selectedFacility?.address ?? null,
+        facilityImageKey: state.selectedFacility?.imageKey ?? null,
+        facilityTag: state.selectedFacility?.tag ?? null,
+      }, state.authToken);
+      dispatch({ type: 'SET_PRICING', payload: mockPricing });
+      dispatch({ type: 'SET_RECEIPT', payload: receiptId });
+      dispatch({ type: 'SET_PAYMENT_STATUS', payload: result.status });
+      announce('Mock payment successful. Booking confirmed.');
+      navigate('booking-confirmation');
+    } catch (err) {
+      if (mockLockToken) releaseSlotReservation(mockLockToken, state.authToken);
+      dispatch({ type: 'SET_PAYMENT_ERROR', payload: err instanceof Error ? err.message : 'Mock booking failed.' });
+    } finally {
+      setPaying(false);
+    }
   }
 
   return (

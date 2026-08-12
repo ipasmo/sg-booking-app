@@ -429,6 +429,18 @@ export async function createBooking(
   }
 }
 
+export async function createMockBooking(
+  payload: BookingPayload,
+  token: string
+): Promise<BookingResponse> {
+  markLocalBooked(payload.selectedDate, payload.selectedTime);
+  return request<BookingResponse>('/api/bookings/mock', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function fetchMyBookings(token: string): Promise<BookingHistoryResponse> {
   try {
     return await request<BookingHistoryResponse>('/api/bookings', {
