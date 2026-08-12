@@ -36,6 +36,8 @@ DATABASE_URL=postgresql://<user>:<password>@<neon-host>/<db>?uselibpqcompat=true
 DATABASE_SSL=true
 DATABASE_CONNECTION_TIMEOUT_MS=5000
 DATABASE_POOL_MAX=10
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_CURRENCY=sgd
 ```
 
 4. Run DB bootstrap scripts.
@@ -45,6 +47,8 @@ npm run db:migrate
 npm run db:seed
 npm run db:smoke:slot-lock
 ```
+
+The supported local database setup sequence is `db:migrate` followed by `db:seed`. No separate login test-data script is required.
 
 If you need to wipe and repopulate all seed data, use `npm run db:reset:seed`.
 
@@ -85,6 +89,7 @@ From `backend/`:
 ```bash
 npm run db:migrate
 npm run db:seed
+npm run db:reset:seed
 ```
 
 Seed now creates:
@@ -93,9 +98,7 @@ Seed now creates:
 - sports catalog rows for `GET /api/sports`
 - sport event cards for `GET /api/sports/:sportId/events`
 - sport facility cards for `GET /api/sports/:sportId/facilities`
-- slot rows for a rolling date window
-- demo bookings for `contact@ipasmo.com` so My Bookings can be tested immediately
-- demo user record for `contact@ipasmo.com`
+- weekday slot configuration rows (`slot_weekday_configurations`)
 
 ### Step 4: Validate health
 
@@ -189,12 +192,31 @@ Dev utility endpoint:
 - `DATABASE_SSL` default `true`
 - `DATABASE_CONNECTION_TIMEOUT_MS` default `5000`
 - `DATABASE_POOL_MAX` default `10`
-- `DEMO_USER_EMAIL` default `contact@ipasmo.com`
 - `DEV_RESET_TOKEN` optional protection for `/api/dev/reset-seed`
+- `STRIPE_SECRET_KEY` required for card checkout and booking confirmation
+- `STRIPE_CURRENCY` optional, defaults to `sgd`
 
 ### Frontend (`frontend/.env.local`)
 
 - `VITE_API_BASE_URL` optional, defaults to proxy in local dev
+- `VITE_STRIPE_PUBLISHABLE_KEY` required for Stripe card checkout in the browser
+
+## Stripe card payments
+
+Card checkout uses Stripe Elements in the frontend and a backend PaymentIntent route:
+
+- Frontend: set `VITE_STRIPE_PUBLISHABLE_KEY` in `frontend/.env.local`
+- Backend: set `STRIPE_SECRET_KEY` (and optionally `STRIPE_CURRENCY=sgd`) in `backend/.env`
+
+Recommended local setup:
+
+1. Create a Stripe account and open the Dashboard -> Developers -> API keys page.
+2. Copy the publishable key into `frontend/.env.local`.
+3. Copy the secret key into `backend/.env`.
+4. Use Stripe test mode keys for local development and switch to live keys only for production.
+5. Verify the checkout flow by selecting a payment method and completing a test card payment.
+
+The backend creates a PaymentIntent for the booking total and the frontend confirms the card payment before the booking request is submitted.
 
 ## Environment-Specific Deployment
 
@@ -213,8 +235,9 @@ DATABASE_URL=postgresql://<user>:<password>@<neon-host>/<db>?uselibpqcompat=true
 DATABASE_SSL=true
 DATABASE_CONNECTION_TIMEOUT_MS=5000
 DATABASE_POOL_MAX=10
-DEMO_USER_EMAIL=contact@ipasmo.com
 DEV_RESET_TOKEN=change-me
+STRIPE_SECRET_KEY=sk_test_your_stripe_secret_key
+STRIPE_CURRENCY=sgd
 ```
 
 Frontend environment (`frontend/.env.local`):
@@ -222,6 +245,7 @@ Frontend environment (`frontend/.env.local`):
 ```env
 VITE_API_BASE_URL=
 VITE_GOOGLE_CLIENT_ID=your-google-client-id.apps.googleusercontent.com
+VITE_STRIPE_PUBLISHABLE_KEY=pk_test_your_stripe_publishable_key
 ```
 
 Run sequence:
@@ -276,7 +300,6 @@ DATABASE_URL=postgresql://<user>:<password>@<neon-host>/<db>?uselibpqcompat=true
 DATABASE_SSL=true
 DATABASE_CONNECTION_TIMEOUT_MS=5000
 DATABASE_POOL_MAX=20
-DEMO_USER_EMAIL=contact@ipasmo.com
 ```
 
 Production rules:
@@ -410,7 +433,6 @@ GitHub-connected deployment from `main` (preferred):
 - `DATABASE_SSL=true`
 - `DATABASE_CONNECTION_TIMEOUT_MS=5000`
 - `DATABASE_POOL_MAX=20`
-- `DEMO_USER_EMAIL=contact@ipasmo.com`
 
 5. Trigger deploy from Render UI and verify:
 
@@ -485,7 +507,7 @@ gcloud run deploy sg-booking-app-backend \
   --region YOUR_REGION \
   --platform managed \
   --allow-unauthenticated \
-  --set-env-vars NODE_ENV=production,PORT=3001,FRONTEND_URL=https://your-frontend-domain.com,DATABASE_SSL=true,DATABASE_CONNECTION_TIMEOUT_MS=5000,DATABASE_POOL_MAX=20,DEMO_USER_EMAIL=contact@ipasmo.com \
+  --set-env-vars NODE_ENV=production,PORT=3001,FRONTEND_URL=https://your-frontend-domain.com,DATABASE_SSL=true,DATABASE_CONNECTION_TIMEOUT_MS=5000,DATABASE_POOL_MAX=20 \
   --set-secrets JWT_SECRET=JWT_SECRET:latest,DATABASE_URL=DATABASE_URL:latest
 ```
 
@@ -567,7 +589,6 @@ Result:
 - `DATABASE_SSL=true`
 - `DATABASE_CONNECTION_TIMEOUT_MS=5000`
 - `DATABASE_POOL_MAX=20`
-- `DEMO_USER_EMAIL=contact@ipasmo.com`
 
 6. Enable Auto-Deploy from `main`.
 
@@ -672,7 +693,7 @@ the slot was claimed by another user; choose another slot and retry.
 - Slot list empty/unexpected:
 run `npm run db:seed` again.
 - My Bookings appears empty:
-log in with `contact@ipasmo.com` (or the same email used to create bookings).
+create at least one booking with your logged-in account and refresh My Bookings.
 - Auth token errors:
 check `JWT_SECRET` and request `Authorization: Bearer <token>`.
 

@@ -11,6 +11,9 @@ import type {
   SportEventsResponse,
   SportEventTemplate,
   SportsResponse,
+  StripePaymentIntentPayload,
+  StripePaymentIntentResponse,
+  StripeTestPaymentIntentPayload,
   SportId,
   SportOption,
 } from '@/types';
@@ -27,6 +30,12 @@ const cachedSportEventsResponse = new Map<SportId, SportEventsResponse>();
 const cachedSportEventsRequest = new Map<SportId, Promise<SportEventsResponse>>();
 const cachedSportFacilitiesResponse = new Map<SportId, SportFacilitiesResponse>();
 const cachedSportFacilitiesRequest = new Map<SportId, Promise<SportFacilitiesResponse>>();
+const SINGAPORE_TIME_ZONE = 'Asia/Singapore';
+
+type SingaporeDateTimeParts = {
+  date: string;
+  time: string;
+};
 
 function isNetworkError(error: unknown): boolean {
   return error instanceof TypeError && /failed to fetch|networkerror|load failed/i.test(error.message);
@@ -50,16 +59,49 @@ function isPreBooked(date: string, time: string): boolean {
   return Math.abs(hash) % 4 === 0;
 }
 
+function toMinutes(time: string): number {
+  const [hour, minute] = time.split(':').map(Number);
+  return hour * 60 + minute;
+}
+
+function currentSingaporeDateTimeParts(base = new Date()): SingaporeDateTimeParts {
+  const dateParts = Object.fromEntries(new Intl.DateTimeFormat('en-CA', {
+    timeZone: SINGAPORE_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(base).map((part) => [part.type, part.value]));
+
+  const timeParts = Object.fromEntries(new Intl.DateTimeFormat('en-SG', {
+    timeZone: SINGAPORE_TIME_ZONE,
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(base).map((part) => [part.type, part.value]));
+
+  return {
+    date: `${dateParts.year}-${dateParts.month}-${dateParts.day}`,
+    time: `${timeParts.hour}:${timeParts.minute}`,
+  };
+}
+
+function isPastOrCurrentSlot(date: string, time: string, reference: SingaporeDateTimeParts = currentSingaporeDateTimeParts()): boolean {
+  return date === reference.date && toMinutes(time) <= toMinutes(reference.time);
+}
+
 function buildLocalSlots(date: string): SlotsResponse {
   const slots: SlotsResponse['slots'] = [];
+  const currentDateTime = currentSingaporeDateTimeParts();
 
   for (let h = 8; h < 22; h++) {
     for (let m = 0; m < 60; m += 30) {
       const time = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+      const past = isPastOrCurrentSlot(date, time, currentDateTime);
       slots.push({
         time,
         key: `${date}_${time}`,
         booked: isPreBooked(date, time),
+        past,
       });
     }
   }
@@ -75,22 +117,28 @@ function resolveTemplate(template: string, sportLabel: string): string {
 
 function buildFallbackSportEvents(sportId: SportId): SportEventsResponse {
   const sport = (fallbackSports as SportOption[]).find((item) => item.id === sportId) ?? (fallbackSports as SportOption[])[0];
-  const events = (fallbackSportEvents as SportEventTemplate[]).map((event) => ({
+  const events = (fallbackSportEvents as SportEventTemplate[])
+    .filter((event) => event.sportId === sport.id)
+    .map((event) => ({
     id: event.id,
+    sportId: event.sportId,
     title: resolveTemplate(event.titleTemplate, sport.label),
     description: resolveTemplate(event.descriptionTemplate, sport.label),
     imageKey: event.imageKey,
     icon: event.icon,
     actionTarget: event.actionTarget,
+    enabled: event.enabled,
     sortOrder: event.sortOrder,
-  }));
+    }));
 
   return { sport, events };
 }
 
 function buildFallbackSportFacilities(sportId: SportId): SportFacilitiesResponse {
   const sport = (fallbackSports as SportOption[]).find((item) => item.id === sportId) ?? (fallbackSports as SportOption[])[0];
-  const facilities = (fallbackSportFacilities as SportFacilityTemplate[]).map((facility) => ({
+  const facilities = (fallbackSportFacilities as SportFacilityTemplate[])
+    .filter((facility) => facility.sportId === sport.id)
+    .map((facility) => ({
     id: `${sport.id}-${facility.code}`,
     sportId: sport.id,
     code: facility.code,
@@ -102,8 +150,9 @@ function buildFallbackSportFacilities(sportId: SportId): SportFacilitiesResponse
     imageKey: facility.imageKey,
     icon: facility.icon,
     actionTarget: facility.actionTarget,
+    enabled: facility.enabled,
     sortOrder: facility.sortOrder,
-  }));
+    }));
 
   return { sport, facilities };
 }
@@ -118,6 +167,8 @@ async function request<T>(
   };
 
   const res = await fetch(`${BASE}${path}`, {
+    // Bypass HTTP caches (browser, mobile carrier proxies, CDNs) so stale payloads never linger.
+    cache: 'no-store',
     ...options,
     headers,
   });
@@ -295,6 +346,53 @@ export async function fetchSportFacilities(sportId: SportId): Promise<SportFacil
 }
 
 // ─── Bookings ─────────────────────────────────────────────────
+
+export interface SlotReservationResponse {
+  lockToken: string;
+  expiresAt: string;
+}
+
+export async function reserveSlotForBooking(
+  payload: { selectedDate: string; selectedTime: string; durationMins: number },
+  token: string
+): Promise<SlotReservationResponse> {
+  return request<SlotReservationResponse>('/api/slots/reserve', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function releaseSlotReservation(lockToken: string, token: string): Promise<void> {
+  // Best-effort: lock expires automatically if this fails
+  await request('/api/slots/release', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify({ lockToken }),
+  }).catch(() => undefined);
+}
+
+export async function createStripePaymentIntent(
+  payload: StripePaymentIntentPayload,
+  token: string
+): Promise<StripePaymentIntentResponse> {
+  return request<StripePaymentIntentResponse>('/api/payments/stripe/payment-intent', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createStripeTestPaymentIntent(
+  payload: StripeTestPaymentIntentPayload,
+  token: string
+): Promise<StripePaymentIntentResponse> {
+  return request<StripePaymentIntentResponse>('/api/payments/stripe/test-payment-intent', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
 
 export async function createBooking(
   payload: BookingPayload,

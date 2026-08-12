@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { authMiddleware, type AuthenticatedRequest } from '../middleware/authMiddleware';
-import { listBookingsByCustomer, saveBooking, SlotAlreadyBookedError, type SportFacilityRow } from '../lib/database';
+import { listBookingsByCustomer, saveBooking, SlotAlreadyBookedError, SlotConfigurationMissingError, type SportFacilityRow } from '../lib/database';
+import { getStripeClient, isStripeConfigured, toMinorCurrencyUnits } from '../lib/stripe';
+import { calculateBookingPricing } from '../lib/bookingPricing';
+import { type SportRow } from '../lib/database';
 
 const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -41,11 +44,14 @@ router.get('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
 // POST /api/bookings  (requires Bearer token)
 router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
   const {
-    bookingType, selectedDate, selectedTime, durationMins,
+    bookingType, sportId, facilityCode, selectedDate, selectedTime, durationMins,
     packageOption, payMethod, grandTotal, receiptId, customerEmail: bodyCustomerEmail,
+    stripePaymentIntentId, lockToken,
     facilityTitle, facilityAddress, facilityImageKey, facilityTag,
   } = req.body as {
     bookingType: string;
+    sportId?: SportRow['id'] | null;
+    facilityCode?: string | null;
     selectedDate: string;
     selectedTime: string;
     durationMins: number;
@@ -53,6 +59,8 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     payMethod: string;
     grandTotal: number;
     receiptId: string;
+    stripePaymentIntentId?: string;
+    lockToken?: string | null;
     customerEmail?: string;
     facilityTitle?: string | null;
     facilityAddress?: string | null;
@@ -73,10 +81,12 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
   if (!selectedTime) missingFields.push('selectedTime');
   if (!payMethod) missingFields.push('payMethod');
   if (!receiptId) missingFields.push('receiptId');
+  if (payMethod === 'STRIPE' && !stripePaymentIntentId) missingFields.push('stripePaymentIntentId');
   if (!customerEmail) missingFields.push('customerEmail');
   if (!Number.isFinite(durationMins) || durationMins <= 0) missingFields.push('durationMins');
   if (!Number.isFinite(grandTotal) || grandTotal < 0) missingFields.push('grandTotal');
   if (customerEmail && !EMAIL_RE.test(customerEmail)) missingFields.push('customerEmail(valid format)');
+  if (bookingType === 'court' && (!sportId || !facilityCode)) missingFields.push('sportId', 'facilityCode');
 
   if (missingFields.length > 0) {
     res.status(400).json({
@@ -87,9 +97,77 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
 
   const resolvedCustomerEmail = customerEmail as string;
 
-  const paymentSuccessful = Math.random() < 0.9;
-  const bookingStatus = paymentSuccessful ? 'confirmed' : 'cash_pending';
-  const paymentMethod = paymentSuccessful ? 'ONLINE' : 'CASH';
+  const pricing = await calculateBookingPricing({
+    bookingType,
+    sportId: sportId ?? null,
+    facilityCode: facilityCode ?? null,
+    durationMins,
+    packageOption,
+    payMethod,
+  }).catch((error) => {
+    const message = error instanceof Error ? error.message : 'Unable to calculate booking total.';
+    res.status(400).json({ error: message });
+    return null;
+  });
+
+  if (!pricing) {
+    return;
+  }
+
+  let responseStatus: 'success' | 'cash' = 'cash';
+  let bookingStatus = 'cash_pending';
+  let paymentMethod: 'ONLINE' | 'CASH' = 'CASH';
+
+  if (payMethod === 'STRIPE') {
+    if (!isStripeConfigured()) {
+      res.status(503).json({
+        error: 'Stripe payment is not configured on backend. Please set STRIPE_SECRET_KEY.',
+      });
+      return;
+    }
+
+    try {
+      const stripe = getStripeClient();
+      const intent = await stripe.paymentIntents.retrieve((stripePaymentIntentId as string).trim());
+
+      if (intent.status !== 'succeeded') {
+        res.status(402).json({
+          error: 'Stripe payment is not completed. Please complete card payment first.',
+        });
+        return;
+      }
+
+      const expectedAmount = toMinorCurrencyUnits(pricing.grandTotal);
+      const paidAmount = intent.amount_received || intent.amount || 0;
+      if (paidAmount !== expectedAmount) {
+        res.status(400).json({
+          error: 'Stripe paid amount does not match booking total.',
+        });
+        return;
+      }
+
+      const intentEmail = intent.receipt_email?.trim().toLowerCase() || intent.metadata.customerEmail?.trim().toLowerCase() || '';
+      if (intentEmail && intentEmail !== resolvedCustomerEmail) {
+        res.status(403).json({
+          error: 'Stripe payment does not belong to the authenticated customer.',
+        });
+        return;
+      }
+
+      responseStatus = 'success';
+      bookingStatus = 'confirmed';
+      paymentMethod = 'ONLINE';
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to verify Stripe payment.';
+      res.status(502).json({ error: message });
+      return;
+    }
+  } else {
+    const paymentSuccessful = Math.random() < 0.9;
+    responseStatus = paymentSuccessful ? 'success' : 'cash';
+    bookingStatus = paymentSuccessful ? 'confirmed' : 'cash_pending';
+    paymentMethod = paymentSuccessful ? 'ONLINE' : 'CASH';
+  }
 
   try {
     await saveBooking({
@@ -99,7 +177,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
       durationMins,
       packageOption,
       payMethod,
-      grandTotal,
+      grandTotal: pricing.grandTotal,
       receiptId,
       customerEmail: resolvedCustomerEmail,
       bookingStatus,
@@ -108,11 +186,19 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
       facilityAddress: facilityAddress?.trim() || null,
       facilityImageKey: toFacilityImageKey(facilityImageKey),
       facilityTag: facilityTag?.trim() || null,
+      lockToken: lockToken ?? null,
     });
   } catch (error) {
     if (error instanceof SlotAlreadyBookedError) {
       res.status(409).json({
         error: 'This slot is already booked. Please select a different time slot.',
+      });
+      return;
+    }
+
+    if (error instanceof SlotConfigurationMissingError) {
+      res.status(422).json({
+        error: 'No weekday slot configuration found. Please contact admin to configure this weekday.',
       });
       return;
     }
@@ -125,7 +211,7 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
 
   res.json({
     receiptId,
-    status: paymentSuccessful ? 'success' : 'cash',
+    status: responseStatus,
     paymentMethod,
   });
 });

@@ -3,6 +3,7 @@ import { ArrowRight, CalendarDays, Clock3, MapPin, ShieldCheck, Star } from 'luc
 import { useApp } from '@/context/AppContext';
 import { announce } from '@/lib/utils';
 import ScreenHeader from '@/components/ScreenHeader';
+import BookingStepBar from '@/components/BookingStepBar';
 import selectSportBackground from '@/assets/select_sport_bk.png';
 import cricketFacility from '@/assets/cricket_facility.png';
 import bowlingLaneCard from '@/assets/bowling_lane.png';
@@ -30,7 +31,9 @@ function resolveTemplate(template: string, sportLabel: string): string {
 
 function buildFallbackFacilityPage(sportId: SportId): SportFacilitiesResponse {
   const sport = (fallbackSports as SportOption[]).find((item) => item.id === sportId) ?? (fallbackSports as SportOption[])[0];
-  const facilities = (fallbackSportFacilities as SportFacilityTemplate[]).map((facility) => ({
+  const facilities = (fallbackSportFacilities as SportFacilityTemplate[])
+    .filter((facility) => facility.sportId === sport.id)
+    .map((facility) => ({
     id: `${sport.id}-${facility.code}`,
     sportId: sport.id,
     code: facility.code,
@@ -42,8 +45,9 @@ function buildFallbackFacilityPage(sportId: SportId): SportFacilitiesResponse {
     imageKey: facility.imageKey,
     icon: facility.icon,
     actionTarget: facility.actionTarget,
+    enabled: facility.enabled,
     sortOrder: facility.sortOrder,
-  }));
+    }));
 
   return { sport, facilities };
 }
@@ -86,6 +90,10 @@ export default function SportFacilityScreen() {
   const facilityCards = facilityPage.facilities;
 
   function handleFacilitySelect(card: SportFacilityCard) {
+    if (!card.enabled) {
+      return;
+    }
+
     dispatch({ type: 'SET_SELECTED_FACILITY', payload: card });
     announce(`${card.title} selected.`);
     navigate(card.actionTarget);
@@ -98,6 +106,8 @@ export default function SportFacilityScreen() {
         style={{ backgroundImage: `url(${selectSportBackground})` }}
       >
         <ScreenHeader onBack={() => navigate('sport-events')} backAriaLabel="Back to sport events" />
+
+        <BookingStepBar currentStep={1} />
 
         <section className="facility-select-hero">
           <h1>
@@ -113,9 +123,11 @@ export default function SportFacilityScreen() {
             <button
               type="button"
               key={card.id}
-              className="facility-select-card"
+              className={`facility-select-card${!card.enabled ? ' is-disabled' : ''}`}
               role="listitem"
               aria-label={card.title}
+              aria-disabled={!card.enabled}
+              disabled={!card.enabled}
               onClick={() => handleFacilitySelect(card)}
             >
               <div className="facility-select-card-media">
@@ -129,7 +141,7 @@ export default function SportFacilityScreen() {
                 <div className="facility-select-card-title">{card.title}</div>
                 <div className="facility-select-card-price">
                   {card.price}
-                  <small>/ hour</small>
+                  <small>/ hour base rate</small>
                 </div>
               </div>
 

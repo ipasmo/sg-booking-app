@@ -61,8 +61,6 @@ const EVENT_IMAGES: EventImageMap = {
   gear: imgCricketGear,
 };
 
-const DISABLED_EVENT_IDS = new Set(['join-academy', 'coach-session', 'purchase-gear']);
-
 function resolveTemplate(template: string, sportLabel: string): string {
   return template
     .replace(/\{sportLower\}/g, sportLabel.toLowerCase())
@@ -73,19 +71,23 @@ function buildFallbackSportPage(sportId: SportId): SportEventsResponse {
   const sport = (fallbackSports as SportOption[]).find((item) => item.id === sportId) ?? (fallbackSports as SportOption[])[0];
   const events = (fallbackSportEvents as Array<{
     id: string;
+    sportId: SportId;
     titleTemplate: string;
     descriptionTemplate: string;
     imageKey: SportEventCard['imageKey'];
     icon: SportEventCard['icon'];
     actionTarget: SportEventCard['actionTarget'];
+    enabled: boolean;
     sortOrder: number;
-  }>).map((event) => ({
+  }>).filter((event) => event.sportId === sport.id).map((event) => ({
     id: event.id,
+    sportId: event.sportId,
     title: resolveTemplate(event.titleTemplate, sport.label),
     description: resolveTemplate(event.descriptionTemplate, sport.label),
     imageKey: event.imageKey,
     icon: event.icon,
     actionTarget: event.actionTarget,
+    enabled: event.enabled,
     sortOrder: event.sortOrder,
   }));
 
@@ -129,7 +131,7 @@ export default function SportEventsScreen() {
   const selectedSportCard = SPORT_CARDS[selectedSportMeta.id] ?? SPORT_CARDS.cricket;
 
   function handleCardAction(card: SportEventCard) {
-    if (DISABLED_EVENT_IDS.has(card.id)) {
+    if (!card.enabled) {
       return;
     }
 
@@ -165,11 +167,11 @@ export default function SportEventsScreen() {
             <button
               type="button"
               key={card.id}
-              className={`sport-event-card${DISABLED_EVENT_IDS.has(card.id) ? ' is-disabled' : ''}`}
+              className={`sport-event-card${!card.enabled ? ' is-disabled' : ''}`}
               role="listitem"
               aria-label={card.title}
-              aria-disabled={DISABLED_EVENT_IDS.has(card.id)}
-              disabled={DISABLED_EVENT_IDS.has(card.id)}
+              aria-disabled={!card.enabled}
+              disabled={!card.enabled}
               onClick={() => handleCardAction(card)}
             >
               <div className="sport-event-card-media">

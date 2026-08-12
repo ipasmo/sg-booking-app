@@ -2,7 +2,7 @@
 // Shared application types
 // ─────────────────────────────────────────────────────────────
 
-export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'terms' | 'login' | 'forgot-password' | 'checkout' | 'booking-confirmation' | 'bookings' | 'profile';
+export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'terms' | 'login' | 'forgot-password' | 'checkout' | 'booking-confirmation' | 'bookings' | 'profile' | 'payment-test';
 export type SportId = 'cricket' | 'indoor-cricket' | 'pickleball' | 'soccer' | 'volleyball' | 'badminton' | 'basketball' | 'kabaddi';
 export type SportImageKey = SportId;
 export type BookingType = 'court' | 'coaching';
@@ -14,6 +14,7 @@ export interface SportOption {
   label: string;
   imageKey: SportImageKey;
   bannerKey: SportId;
+  enabled: boolean;
   sortOrder: number;
 }
 
@@ -27,25 +28,30 @@ export type SportFacilityIcon = 'lane' | 'net' | 'court' | 'field' | 'academy' |
 
 export interface SportEventTemplate {
   id: string;
+  sportId: SportId;
   titleTemplate: string;
   descriptionTemplate: string;
   imageKey: SportEventImageKey;
   icon: SportEventIcon;
   actionTarget: SportEventActionTarget;
+  enabled: boolean;
   sortOrder: number;
 }
 
 export interface SportEventCard {
   id: string;
+  sportId: SportId;
   title: string;
   description: string;
   imageKey: SportEventImageKey;
   icon: SportEventIcon;
   actionTarget: SportEventActionTarget;
+  enabled: boolean;
   sortOrder: number;
 }
 
 export interface SportFacilityTemplate {
+  sportId: SportId;
   code: string;
   titleTemplate: string;
   price: string;
@@ -53,6 +59,7 @@ export interface SportFacilityTemplate {
   imageKey: SportFacilityImageKey;
   icon: SportFacilityIcon;
   actionTarget: SportFacilityActionTarget;
+  enabled: boolean;
   sortOrder: number;
   address: string;
   mapLocationUrl: string;
@@ -68,6 +75,7 @@ export interface SportFacilityCard {
   imageKey: SportFacilityImageKey;
   icon: SportFacilityIcon;
   actionTarget: SportFacilityActionTarget;
+  enabled: boolean;
   sortOrder: number;
   address: string;
   mapLocationUrl: string;
@@ -89,6 +97,7 @@ export interface TimeSlot {
   time: string;
   key: string;
   booked: boolean;
+  past: boolean;
 }
 
 export interface AppState {
@@ -127,7 +136,7 @@ export type Action =
   | { type: 'SET_TIME'; payload: string }
   | { type: 'SET_DURATION'; payload: number }
   | { type: 'SET_PACKAGE'; payload: string | null }
-  | { type: 'SET_PAY_METHOD'; payload: PayMethod }
+  | { type: 'SET_PAY_METHOD'; payload: PayMethod | null }
   | { type: 'SET_LOGGED_IN'; payload: { email: string; token: string } }
   | { type: 'SET_SLOTS_LOADING' }
   | { type: 'SET_SLOTS'; payload: TimeSlot[] }
@@ -144,6 +153,8 @@ export type Action =
 
 export interface BookingPayload {
   bookingType: BookingType;
+  sportId: SportId;
+  facilityCode: string;
   selectedDate: string;
   selectedTime: string;
   durationMins: number;
@@ -151,11 +162,36 @@ export interface BookingPayload {
   payMethod: PayMethod;
   grandTotal: number;
   receiptId: string;
+  stripePaymentIntentId?: string;
   customerEmail: string;
   facilityTitle: string | null;
   facilityAddress: string | null;
   facilityImageKey: SportFacilityImageKey | null;
   facilityTag: string | null;
+  lockToken?: string | null;
+}
+
+export interface StripePaymentIntentPayload {
+  bookingType: BookingType;
+  sportId?: SportId | null;
+  facilityCode?: string | null;
+  durationMins: number;
+  packageOption: string | null;
+  currency?: string;
+  receiptId: string;
+}
+
+export interface StripeTestPaymentIntentPayload {
+  amount: number;
+  currency?: string;
+  receiptId: string;
+}
+
+export interface StripePaymentIntentResponse {
+  clientSecret: string;
+  paymentIntentId: string;
+  amount: number;
+  currency: string;
 }
 
 export interface LoginResponse {

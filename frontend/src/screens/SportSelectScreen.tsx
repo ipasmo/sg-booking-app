@@ -20,6 +20,7 @@ type SportTile = {
   id: SportId;
   label: string;
   image: string;
+  enabled: boolean;
 };
 
 const SPORT_IMAGES: Record<SportOption['imageKey'], string> = {
@@ -33,19 +34,12 @@ const SPORT_IMAGES: Record<SportOption['imageKey'], string> = {
   kabaddi: kabaddiCard,
 };
 
-const DISABLED_SPORT_IDS = new Set<SportId>([
-  'soccer',
-  'volleyball',
-  'badminton',
-  'basketball',
-  'kabaddi',
-]);
-
 function toSportTiles(sports: SportOption[]): SportTile[] {
   return sports.map((sport) => ({
     id: sport.id,
     label: sport.label,
     image: SPORT_IMAGES[sport.imageKey] ?? SPORT_IMAGES.cricket,
+    enabled: sport.enabled,
   }));
 }
 
@@ -78,7 +72,7 @@ export default function SportSelectScreen() {
   }, []);
 
   function handleSportSelect(sport: SportTile) {
-    if (DISABLED_SPORT_IDS.has(sport.id)) {
+    if (!sport.enabled) {
       return;
     }
 
@@ -114,11 +108,11 @@ export default function SportSelectScreen() {
             <button
               type="button"
               key={sport.id}
-              className={`sport-card${DISABLED_SPORT_IDS.has(sport.id) ? ' is-disabled' : ''}`}
+              className={`sport-card${!sport.enabled ? ' is-disabled' : ''}`}
               role="listitem"
               aria-label={`Select ${sport.label}`}
-              aria-disabled={DISABLED_SPORT_IDS.has(sport.id)}
-              disabled={DISABLED_SPORT_IDS.has(sport.id)}
+              aria-disabled={!sport.enabled}
+              disabled={!sport.enabled}
               onClick={() => handleSportSelect(sport)}
             >
               <img src={sport.image} alt={sport.label} className="sport-card-img" />

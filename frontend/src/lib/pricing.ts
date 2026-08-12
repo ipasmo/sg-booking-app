@@ -1,10 +1,11 @@
-import { COURT_RATE, PACKAGES, PLATFORM_FEE, TAX_RATE } from './constants';
+import { COURT_RATE, PACKAGES, PLATFORM_FEE, STRIPE_FEE_RATE } from './constants';
 
 export function calcPricing(
   bookingType: string,
   durationMins: number,
   packageOption: string | null,
-  ratePerHour = COURT_RATE
+  ratePerHour = COURT_RATE,
+  payMethod?: string | null
 ) {
   let priceSubtotal = 0;
 
@@ -16,8 +17,11 @@ export function calcPricing(
   }
 
   const platformFee = PLATFORM_FEE;
-  const tax         = parseFloat((priceSubtotal * TAX_RATE).toFixed(2));
-  const grandTotal  = parseFloat((priceSubtotal + tax + platformFee).toFixed(2));
+  const isCard = payMethod === 'STRIPE';
+  const tax = isCard
+    ? parseFloat(((priceSubtotal + platformFee) * STRIPE_FEE_RATE).toFixed(2))
+    : 0;
+  const grandTotal = parseFloat((priceSubtotal + platformFee + tax).toFixed(2));
 
   return { priceSubtotal, tax, platformFee, grandTotal };
 }

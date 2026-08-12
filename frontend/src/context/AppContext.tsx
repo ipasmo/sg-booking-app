@@ -190,6 +190,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       if (target === 'checkout' && (!state.selectedDate || !state.selectedTime)) return;
+      // payment-test is dev-only; no auth guard — screen handles it internally
 
       dispatch({ type: 'SET_SCREEN', payload: target });
     },
@@ -197,7 +198,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   );
 
   const goBack = useCallback(() => {
-    const order: Screen[] = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'terms', 'login', 'forgot-password', 'checkout', 'booking-confirmation', 'bookings', 'profile'];
+    const order: Screen[] = ['home', 'sport-select', 'sport-events', 'facility-select', 'schedule', 'terms', 'login', 'forgot-password', 'checkout', 'booking-confirmation', 'bookings', 'profile', 'payment-test'];
     const idx = order.indexOf(state.screen);
     if (idx <= 0) return;
 
@@ -238,7 +239,7 @@ export function useSelectBookingType() {
 export function useSelectPayMethod() {
   const { dispatch } = useApp();
   return useCallback(
-    (method: PayMethod) => dispatch({ type: 'SET_PAY_METHOD', payload: method }),
+    (method: PayMethod | null) => dispatch({ type: 'SET_PAY_METHOD', payload: method }),
     [dispatch]
   );
 }
