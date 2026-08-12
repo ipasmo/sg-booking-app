@@ -97,8 +97,8 @@ router.post('/stripe/payment-intent', authMiddleware, async (req: AuthenticatedR
       currency: intent.currency,
     });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Stripe payment initialization failed.';
-    res.status(502).json({ error: message });
+    console.error('[payments] Stripe payment initialization failed:', error);
+    res.status(502).json({ error: 'Unable to start card payment. Please try again later.' });
   }
 });
 
@@ -150,8 +150,8 @@ router.post('/stripe/test-payment-intent', authMiddleware, async (req: Authentic
 
     res.json({ clientSecret: intent.client_secret, paymentIntentId: intent.id, amount: intent.amount, currency: intent.currency });
   } catch (error) {
-    const message = error instanceof Error ? error.message : 'Stripe test payment initialization failed.';
-    res.status(502).json({ error: message });
+    console.error('[payments] Stripe test payment initialization failed:', error);
+    res.status(502).json({ error: 'Unable to start card payment test. Please try again later.' });
   }
 });
 

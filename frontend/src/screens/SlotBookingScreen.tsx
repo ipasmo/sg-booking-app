@@ -28,7 +28,6 @@ const FACILITY_IMAGES: Record<SportFacilityCard['imageKey'], string> = {
   'outdoor-field': cricketFacility,
 };
 
-const FALLBACK_RATE_PER_HOUR = 45;
 const SLOT_STEP_MINUTES = 30;
 
 function resolveTemplate(template: string, sportLabel: string): string {
@@ -109,7 +108,7 @@ function formatDurationLabel(minutes: number): string {
 
 function parseRate(price: string): number {
   const parsed = Number(price.replace(/[^0-9.]/g, ''));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : FALLBACK_RATE_PER_HOUR;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
 
 function facilityDayLabel(date: Date, todayIso: string): string {

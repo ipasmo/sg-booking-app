@@ -1,10 +1,10 @@
-import { COURT_RATE, PACKAGES, PLATFORM_FEE, STRIPE_FEE_RATE } from './constants';
+import { PACKAGES, PLATFORM_FEE, STRIPE_FEE_RATE } from './constants';
 
 export function calcPricing(
   bookingType: string,
   durationMins: number,
   packageOption: string | null,
-  ratePerHour = COURT_RATE,
+  ratePerHour = 0,
   payMethod?: string | null
 ) {
   let priceSubtotal = 0;
@@ -30,15 +30,15 @@ export function sgd(n: number): string {
   return `SGD ${Number(n).toFixed(2)}`;
 }
 
-export function parseRate(price: string | number | null | undefined, fallback = COURT_RATE): number {
+export function parseRate(price: string | number | null | undefined): number {
   if (typeof price === 'number') {
-    return Number.isFinite(price) && price > 0 ? price : fallback;
+    return Number.isFinite(price) && price > 0 ? price : 0;
   }
 
   if (!price) {
-    return fallback;
+    return 0;
   }
 
   const parsed = Number(String(price).replace(/[^0-9.]/g, ''));
-  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 0;
 }
