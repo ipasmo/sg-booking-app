@@ -14,11 +14,12 @@ import CheckoutScreen from '@/screens/CheckoutScreen';
 import BookingConfirmationScreen from '@/screens/BookingConfirmationScreen';
 import ViewBookingsScreen from '@/screens/ViewBookingsScreen';
 import ProfileScreen from '@/screens/ProfileScreen';
+import PaymentTestScreen from '@/screens/PaymentTestScreen';
 
 export default function App() {
   const { state, navigate } = useApp();
-  const isImmersiveScreen = state.screen === 'home' || state.screen === 'sport-select' || state.screen === 'sport-events' || state.screen === 'facility-select' || state.screen === 'schedule' || state.screen === 'terms' || state.screen === 'login' || state.screen === 'forgot-password' || state.screen === 'checkout' || state.screen === 'booking-confirmation' || state.screen === 'bookings' || state.screen === 'profile';
-  const topAlignedImmersive = state.screen === 'schedule' || state.screen === 'terms' || state.screen === 'forgot-password' || state.screen === 'checkout' || state.screen === 'booking-confirmation' || state.screen === 'bookings' || state.screen === 'profile';
+  const isImmersiveScreen = state.screen === 'home' || state.screen === 'sport-select' || state.screen === 'sport-events' || state.screen === 'facility-select' || state.screen === 'schedule' || state.screen === 'terms' || state.screen === 'login' || state.screen === 'forgot-password' || state.screen === 'checkout' || state.screen === 'booking-confirmation' || state.screen === 'bookings' || state.screen === 'profile' || state.screen === 'payment-test';
+  const topAlignedImmersive = state.screen === 'schedule' || state.screen === 'terms' || state.screen === 'forgot-password' || state.screen === 'checkout' || state.screen === 'booking-confirmation' || state.screen === 'bookings' || state.screen === 'profile' || state.screen === 'payment-test';
   const showBottomNav = state.screen !== 'home' && state.screen !== 'login' && state.screen !== 'forgot-password';
   const activeBottomItem = state.screen === 'home'
     ? 'home'
@@ -47,6 +48,7 @@ export default function App() {
       {state.screen === 'booking-confirmation'  && <BookingConfirmationScreen />}
       {state.screen === 'bookings' && <ViewBookingsScreen />}
       {state.screen === 'profile' && <ProfileScreen />}
+      {state.screen === 'payment-test' && <PaymentTestScreen />}
 
       {showBottomNav && (
         <BottomIconNav

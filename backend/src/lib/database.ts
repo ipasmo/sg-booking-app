@@ -223,6 +223,7 @@ const DEFAULT_SYSTEM_CONFIGS: SystemConfigSeed[] = [
   { configType: 'PAYMENTS', configKey: 'CURRENCY',                    configValue: 'sgd',  valueType: 'STRING',  description: 'ISO 4217 currency code for all payment processing' },
   { configType: 'PAYMENTS', configKey: 'PAYMENT_SESSION_TIMEOUT_SECS',configValue: '300',  valueType: 'INTEGER', description: 'Seconds before an in-progress payment session expires' },
   { configType: 'PAYMENTS', configKey: 'STRIPE_ENABLED',              configValue: 'true', valueType: 'BOOLEAN', description: 'Whether Stripe card payments are active' },
+  { configType: 'PAYMENTS', configKey: 'PAYMENT_TEST_MODE_ENABLED',   configValue: 'true', valueType: 'BOOLEAN', description: 'Whether the developer-only custom-amount Stripe test endpoint is active' },
   { configType: 'PAYMENTS', configKey: 'PAYNOW_ENABLED',              configValue: 'false',valueType: 'BOOLEAN', description: 'Whether PayNow payments are active' },
   { configType: 'PAYMENTS', configKey: 'GRABPAY_ENABLED',             configValue: 'false',valueType: 'BOOLEAN', description: 'Whether GrabPay payments are active' },
   { configType: 'PAYMENTS', configKey: 'GPAY_ENABLED',                configValue: 'false',valueType: 'BOOLEAN', description: 'Whether Google Pay payments are active' },

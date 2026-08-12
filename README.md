@@ -48,6 +48,8 @@ npm run db:seed
 npm run db:smoke:slot-lock
 ```
 
+The supported local database setup sequence is `db:migrate` followed by `db:seed`. No separate login test-data script is required.
+
 If you need to wipe and repopulate all seed data, use `npm run db:reset:seed`.
 
 5. Start backend and frontend.

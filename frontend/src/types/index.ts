@@ -2,7 +2,7 @@
 // Shared application types
 // ─────────────────────────────────────────────────────────────
 
-export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'terms' | 'login' | 'forgot-password' | 'checkout' | 'booking-confirmation' | 'bookings' | 'profile';
+export type Screen = 'home' | 'sport-select' | 'sport-events' | 'facility-select' | 'schedule' | 'terms' | 'login' | 'forgot-password' | 'checkout' | 'booking-confirmation' | 'bookings' | 'profile' | 'payment-test';
 export type SportId = 'cricket' | 'indoor-cricket' | 'pickleball' | 'soccer' | 'volleyball' | 'badminton' | 'basketball' | 'kabaddi';
 export type SportImageKey = SportId;
 export type BookingType = 'court' | 'coaching';
@@ -177,6 +177,12 @@ export interface StripePaymentIntentPayload {
   facilityCode?: string | null;
   durationMins: number;
   packageOption: string | null;
+  currency?: string;
+  receiptId: string;
+}
+
+export interface StripeTestPaymentIntentPayload {
+  amount: number;
   currency?: string;
   receiptId: string;
 }

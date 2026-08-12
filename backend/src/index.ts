@@ -58,6 +58,12 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '50kb' }));
 
+// Prevent browsers/proxies/CDNs from caching API responses so clients always get fresh data.
+app.use('/api', (_req, res, next) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  next();
+});
+
 // ── Routes ────────────────────────────────────────────────────
 app.use('/api/auth',     authRoutes);
 app.use('/api/slots',    slotsRoutes);

@@ -13,6 +13,7 @@ import type {
   SportsResponse,
   StripePaymentIntentPayload,
   StripePaymentIntentResponse,
+  StripeTestPaymentIntentPayload,
   SportId,
   SportOption,
 } from '@/types';
@@ -166,6 +167,8 @@ async function request<T>(
   };
 
   const res = await fetch(`${BASE}${path}`, {
+    // Bypass HTTP caches (browser, mobile carrier proxies, CDNs) so stale payloads never linger.
+    cache: 'no-store',
     ...options,
     headers,
   });
@@ -374,6 +377,17 @@ export async function createStripePaymentIntent(
   token: string
 ): Promise<StripePaymentIntentResponse> {
   return request<StripePaymentIntentResponse>('/api/payments/stripe/payment-intent', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function createStripeTestPaymentIntent(
+  payload: StripeTestPaymentIntentPayload,
+  token: string
+): Promise<StripePaymentIntentResponse> {
+  return request<StripePaymentIntentResponse>('/api/payments/stripe/test-payment-intent', {
     method: 'POST',
     headers: { Authorization: `Bearer ${token}` },
     body: JSON.stringify(payload),

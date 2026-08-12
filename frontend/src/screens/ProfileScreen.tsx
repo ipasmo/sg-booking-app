@@ -3,6 +3,7 @@ import {
   CalendarDays,
   ChevronRight,
   Compass,
+  FlaskConical,
   Headphones,
   LogOut,
   Mail,
@@ -18,6 +19,8 @@ import ErrorBanner from '@/components/ErrorBanner';
 import Spinner from '@/components/Spinner';
 import pageBackground from '@/assets/select_sport_bk.png';
 import type { ProfileResponse } from '@/types';
+
+const PAYMENT_TEST_PAGE_ENABLED = (import.meta.env.VITE_PAYMENT_TEST_PAGE_ENABLED ?? 'false').trim() === 'true';
 
 function initialsFor(name: string): string {
   return name
@@ -148,6 +151,14 @@ export default function ProfileScreen() {
             <button type="button" className="profile-logout" onClick={logOut}>
               <LogOut size={19} /> Log Out
             </button>
+
+            {PAYMENT_TEST_PAGE_ENABLED && (
+              <button type="button" className="profile-test-pay-btn"
+                onClick={() => navigate('payment-test')}>
+                <FlaskConical size={16} strokeWidth={2} />
+                <span>Payment Integration Test</span>
+              </button>
+            )}
           </>
         ) : null}
       </main>

@@ -16,6 +16,18 @@
   to     = "/index.html"
   status = 200
 
+# index.html must always revalidate so a new deploy is picked up immediately,
+# while hashed assets (Vite output) can be cached forever since their filename changes on every build.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "no-cache, must-revalidate"
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
 # Backend environment variables — set these in the Netlify dashboard
 # VITE_API_BASE_URL = https://your-backend-url.com
 # VITE_AUTH_PAYLOAD_KEY = change-this-auth-payload-key

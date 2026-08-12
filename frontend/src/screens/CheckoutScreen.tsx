@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, CalendarDays, ChevronDown, Clock3, Lock, MapPin } from 'lucide-react';
+import { ArrowRight, CalendarDays, ChevronDown, Clock3, FlaskConical, Lock, MapPin, Zap } from 'lucide-react';
 import { useApp, useSelectPayMethod } from '@/context/AppContext';
 import ScreenHeader from '@/components/ScreenHeader';
 import BookingStepBar from '@/components/BookingStepBar';
@@ -66,6 +66,7 @@ const PAY_METHODS: Array<{ id: PayMethod; title: string; subtitle: string; badge
 
 const STRIPE_PUBLISHABLE_KEY = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? '').trim();
 const stripePromise = STRIPE_PUBLISHABLE_KEY ? loadStripe(STRIPE_PUBLISHABLE_KEY) : null;
+const MOCK_PAYMENT_ENABLED = (import.meta.env.VITE_MOCK_PAYMENT_ENABLED ?? 'false').trim() === 'true';
 
 const STRIPE_ELEMENT_STYLE = {
   style: {
@@ -455,10 +456,28 @@ function CheckoutScreenContent() {
   }
 
   const selectedPackageLabel = PACKAGES.find(p => p.id === state.packageOption)?.label ?? 'No package selected';
+
+  function handleMockPay() {
+    if (!state.bookingType || !state.selectedDate || !state.selectedTime) return;
+    const receiptId = makeReceiptId();
+    dispatch({ type: 'SET_PRICING', payload: pricing });
+    dispatch({ type: 'SET_RECEIPT', payload: receiptId });
+    dispatch({ type: 'SET_PAYMENT_STATUS', payload: 'success' });
+    announce('Mock payment successful. Booking confirmed.');
+    navigate('booking-confirmation');
+  }
+
   return (
     <div className="page-container page-container--immersive screen-fade-enter">
       <div className="checkout-phone" style={{ backgroundImage: `url(${pageBackground})` }}>
         <ScreenHeader onBack={() => navigate('terms')} backAriaLabel="Back to terms" />
+
+        {MOCK_PAYMENT_ENABLED && (
+          <div className="checkout-mock-banner">
+            <FlaskConical size={14} strokeWidth={2} />
+            <span>Test Mode Active — Mock Pay enabled</span>
+          </div>
+        )}
 
         <h1 className="checkout-title">Checkout</h1>
 
@@ -670,6 +689,18 @@ function CheckoutScreenContent() {
             </div>
           )}
         </section>
+
+        {MOCK_PAYMENT_ENABLED && (
+          <button
+            type="button"
+            className="checkout-mock-pay-btn"
+            disabled={paying || !coachingReady}
+            onClick={handleMockPay}
+          >
+            <Zap size={18} strokeWidth={2.3} />
+            <span>Mock Pay — Skip Stripe</span>
+          </button>
+        )}
 
         <button className="checkout-pay-btn-v2" disabled={!canPay} onClick={handlePayment}>
           {paying ? (
