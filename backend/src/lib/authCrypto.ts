@@ -1,6 +1,6 @@
 import { createHash, randomBytes, webcrypto } from 'crypto';
 
-const CLIENT_PAYLOAD_KEY = process.env.AUTH_PAYLOAD_KEY ?? 'dev-auth-payload-key-change-me';
+const CLIENT_PAYLOAD_KEY = process.env.VITE_AUTH_PAYLOAD_KEY ?? 'dev-auth-payload-key-change-me';
 const PASSWORD_AT_REST_KEY = process.env.PASSWORD_AT_REST_KEY ?? CLIENT_PAYLOAD_KEY;
 
 function toBase64(bytes: Uint8Array): string {

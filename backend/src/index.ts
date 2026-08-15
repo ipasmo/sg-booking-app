@@ -1,7 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import dotenv from 'dotenv';
+import 'dotenv/config';
 
 import authRoutes     from './routes/auth';
 import slotsRoutes    from './routes/slots';
@@ -12,8 +12,6 @@ import sportsRoutes   from './routes/sports';
 import configRoutes   from './routes/config';
 import devRoutes      from './routes/dev';
 import { isDatabaseConfigured } from './lib/database';
-
-dotenv.config();
 
 const app  = express();
 const PORT = parseInt(process.env.PORT ?? '3001', 10);

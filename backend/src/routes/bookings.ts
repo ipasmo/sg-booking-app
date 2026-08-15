@@ -4,6 +4,7 @@ import { listBookingsByCustomer, saveBooking, SlotAlreadyBookedError, SlotConfig
 import { getStripeClient, isStripeConfigured, toMinorCurrencyUnits } from '../lib/stripe';
 import { calculateBookingPricing } from '../lib/bookingPricing';
 import { type SportRow } from '../lib/database';
+import { sendBookingConfirmationEmail } from '../lib/email';
 
 const router = Router();
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -27,6 +28,12 @@ function toFacilityImageKey(value: string | null | undefined): SportFacilityRow[
 
 function normalizeEmail(value: string): string {
   return value.trim().toLowerCase();
+}
+
+function notifyBookingConfirmation(input: Parameters<typeof sendBookingConfirmationEmail>[0]): void {
+  void sendBookingConfirmationEmail(input).catch((error) => {
+    console.error('[booking:confirmation] Notification email failed:', error);
+  });
 }
 
 // GET /api/bookings  (requires Bearer token)
@@ -113,6 +120,19 @@ router.post('/mock', authMiddleware, async (req: AuthenticatedRequest, res) => {
     res.status(500).json({ error: 'Unable to create mock booking.' });
     return;
   }
+
+  notifyBookingConfirmation({
+    email: customerEmail,
+    receiptId: payload.receiptId,
+    status: 'confirmed',
+    paymentStatus: 'paid',
+    facilityTitle: payload.facilityTitle ?? 'SportyGo Facility',
+    facilityAddress: payload.facilityAddress ?? 'Location not available',
+    slotDate: payload.selectedDate,
+    slotTime: payload.selectedTime,
+    durationMins: payload.durationMins,
+    amount: pricing.grandTotal,
+  });
 
   res.json({ receiptId: payload.receiptId, status: 'success', paymentMethod: 'ONLINE' });
 });
@@ -284,6 +304,19 @@ router.post('/', authMiddleware, async (req: AuthenticatedRequest, res) => {
     });
     return;
   }
+
+  notifyBookingConfirmation({
+    email: resolvedCustomerEmail,
+    receiptId,
+    status: bookingStatus as 'confirmed' | 'cash_pending',
+    paymentStatus: responseStatus === 'success' ? 'paid' : 'pending',
+    facilityTitle: facilityTitle?.trim() || 'SportyGo Facility',
+    facilityAddress: facilityAddress?.trim() || 'Location not available',
+    slotDate: selectedDate,
+    slotTime: selectedTime,
+    durationMins,
+    amount: pricing.grandTotal,
+  });
 
   res.json({
     receiptId,

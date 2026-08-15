@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { CardCvcElement, CardExpiryElement, CardNumberElement, Elements, useElements, useStripe } from '@stripe/react-stripe-js';
-import { loadStripe } from '@stripe/stripe-js';
 import { Check, ClipboardCopy, FlaskConical, Lock } from 'lucide-react';
 import { useApp } from '@/context/AppContext';
 import { createStripeTestPaymentIntent } from '@/lib/api';
@@ -8,10 +7,9 @@ import { makeReceiptId, announce } from '@/lib/utils';
 import { sgd } from '@/lib/pricing';
 import ScreenHeader from '@/components/ScreenHeader';
 import pageBackground from '@/assets/select_sport_bk.png';
+import { stripePromise, stripePublishableKey } from '@/lib/stripe';
 
 const PAYMENT_TEST_PAGE_ENABLED = (import.meta.env.VITE_PAYMENT_TEST_PAGE_ENABLED ?? 'false').trim() === 'true';
-const STRIPE_KEY = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? '').trim();
-const stripePromise = STRIPE_KEY ? loadStripe(STRIPE_KEY) : null;
 const ELEMENT_OPTIONS = {
   style: {
     base: { color: '#edf2fa', fontFamily: 'Segoe UI, sans-serif', fontSize: '15px', '::placeholder': { color: '#9ca6b7' } },
@@ -130,7 +128,7 @@ function PaymentTestContent() {
           <div className="pt-card-list">{STRIPE_TEST_CARDS.map((card) => <div className="pt-card-row" key={card.number}><span className="pt-card-dot" style={{ background: card.color }} /><code className="pt-card-num">{card.number}</code><CopyButton text={card.number} /><span className="pt-card-label">{card.label}</span></div>)}</div>
         </section>
 
-        <button type="button" className="pt-real-btn" disabled={busy || !STRIPE_KEY} onClick={handleStripePayment}><Lock size={17} /><span>{busy ? 'Processing…' : `Pay ${amount || '0.00'} with Stripe`}</span></button>
+        <button type="button" className="pt-real-btn" disabled={busy || !stripePublishableKey} onClick={handleStripePayment}><Lock size={17} /><span>{busy ? 'Processing…' : `Pay ${amount || '0.00'} with Stripe`}</span></button>
       </div>
     </div>
   );

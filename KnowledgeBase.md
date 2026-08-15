@@ -195,7 +195,6 @@ Backend (`backend/.env`):
 - DATABASE_SSL
 - DATABASE_CONNECTION_TIMEOUT_MS
 - DATABASE_POOL_MAX
-- DEMO_USER_EMAIL
 - DEV_RESET_TOKEN
 
 Frontend (`frontend/.env.local`):

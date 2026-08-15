@@ -10,6 +10,73 @@ function hasSmtpConfig(): boolean {
   return Boolean(SMTP_HOST && SMTP_PORT && SMTP_USER && SMTP_PASS && SMTP_FROM);
 }
 
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+export type BookingConfirmationEmail = {
+  email: string;
+  receiptId: string;
+  status: 'confirmed' | 'cash_pending';
+  paymentStatus: 'paid' | 'pending';
+  facilityTitle: string;
+  facilityAddress: string;
+  slotDate: string;
+  slotTime: string;
+  durationMins: number;
+  amount: number;
+};
+
+export async function sendBookingConfirmationEmail(input: BookingConfirmationEmail): Promise<void> {
+  if (!hasSmtpConfig()) {
+    console.warn('[booking:confirmation] SMTP not configured; email not sent.', input.email);
+    return;
+  }
+
+  const statusLabel = input.paymentStatus === 'paid' ? 'Payment successful' : 'Payment pending';
+  const subject = `SportyGo booking ${input.receiptId} confirmed`;
+  const text = [
+    'SportyGo booking confirmation',
+    `Status: ${statusLabel}`,
+    `Booking ID: ${input.receiptId}`,
+    `Facility: ${input.facilityTitle}`,
+    `Address: ${input.facilityAddress}`,
+    `Date: ${input.slotDate}`,
+    `Time: ${input.slotTime}`,
+    `Duration: ${input.durationMins} minutes`,
+    `Amount: S$${input.amount.toFixed(2)}`,
+  ].join('\n');
+  const html = `
+    <div style="font-family:Arial,sans-serif;background:#051328;color:#edf1f7;padding:24px;max-width:560px;border-radius:16px;">
+      <p style="margin:0 0 8px;color:#d8ae67;font-size:13px;letter-spacing:.12em;text-transform:uppercase;">SportyGo</p>
+      <h1 style="margin:0 0 8px;font-size:26px;">Booking Confirmation</h1>
+      <p style="color:#7ccf57;font-weight:700;">${escapeHtml(statusLabel)}</p>
+      <div style="border-top:1px solid #273a57;border-bottom:1px solid #273a57;padding:16px 0;">
+        <p><strong>Booking ID</strong><br>${escapeHtml(input.receiptId)}</p>
+        <p><strong>Facility</strong><br>${escapeHtml(input.facilityTitle)}</p>
+        <p><strong>Address</strong><br>${escapeHtml(input.facilityAddress)}</p>
+        <p><strong>Date &amp; time</strong><br>${escapeHtml(input.slotDate)} · ${escapeHtml(input.slotTime)}</p>
+        <p><strong>Duration</strong><br>${input.durationMins} minutes</p>
+        <p style="font-size:20px;color:#e12633;font-weight:800;"><strong>Total</strong><br>S$${input.amount.toFixed(2)}</p>
+      </div>
+      <p style="color:#c6cfdd;">Please keep this email for your records.</p>
+    </div>`;
+
+  const transporter = nodemailer.createTransport({
+    host: SMTP_HOST,
+    port: SMTP_PORT,
+    secure: SMTP_PORT === 465,
+    auth: { user: SMTP_USER, pass: SMTP_PASS },
+  });
+
+  await transporter.sendMail({ from: SMTP_FROM, to: input.email, subject, text, html });
+}
+
 export async function sendPasswordResetPasscode(input: { email: string; code: string }): Promise<void> {
   const subject = 'SportyGo password reset code';
   const text = [
@@ -46,11 +113,13 @@ export async function sendPasswordResetPasscode(input: { email: string; code: st
     },
   });
 
-  await transporter.sendMail({
+  const result = await transporter.sendMail({
     from: SMTP_FROM,
     to: input.email,
     subject,
     text,
     html,
   });
+
+  console.log(`[email:password-reset] SMTP accepted=${result.accepted.length} rejected=${result.rejected.length}`);
 }

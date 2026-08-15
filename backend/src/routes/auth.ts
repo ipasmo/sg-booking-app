@@ -15,6 +15,12 @@ function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();
 }
 
+function maskEmail(email: string): string {
+  const [localPart, domain] = email.split('@');
+  if (!localPart || !domain) return email;
+  return `${localPart.slice(0, 2)}***@${domain}`;
+}
+
 router.get('/profile', authMiddleware, async (req: AuthenticatedRequest, res) => {
   const user = await findUserByEmail(req.user?.email ?? '');
 
@@ -179,6 +185,7 @@ router.post('/forgot-password/request', async (req, res) => {
 
   const existingUser = await findUserByEmail(normalizedEmail);
   if (!existingUser) {
+    console.warn(`[auth:forgot-password] Account not found for ${maskEmail(normalizedEmail)}`);
     res.status(404).json({ error: 'No account found for that email address.' });
     return;
   }
@@ -193,13 +200,16 @@ router.post('/forgot-password/request', async (req, res) => {
   });
 
   if (!saved) {
+    console.error(`[auth:forgot-password] Could not save reset code for ${maskEmail(normalizedEmail)}`);
     res.status(500).json({ error: 'Unable to prepare reset passcode. Please try again.' });
     return;
   }
 
   try {
     await sendPasswordResetPasscode({ email: normalizedEmail, code });
-  } catch {
+    console.log(`[auth:forgot-password] Reset code email sent to ${maskEmail(normalizedEmail)}`);
+  } catch (error) {
+    console.error(`[auth:forgot-password] Reset code email failed for ${maskEmail(normalizedEmail)}`, error);
     res.status(500).json({ error: 'Unable to send reset passcode email. Please try again.' });
     return;
   }
