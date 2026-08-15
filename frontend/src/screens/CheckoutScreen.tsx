@@ -12,7 +12,6 @@ import {
   useStripe,
 } from '@stripe/react-stripe-js';
 import {
-  loadStripe,
   type StripeCardCvcElement,
   type StripeCardCvcElementChangeEvent,
   type StripeCardCvcElementOptions,
@@ -27,6 +26,7 @@ import { createBooking, createMockBooking, createStripePaymentIntent, reserveSlo
 import { PACKAGES, PLATFORM_FEE } from '@/lib/constants';
 import { calcPricing, parseRate, sgd } from '@/lib/pricing';
 import { formatDateShort, makeReceiptId, announce } from '@/lib/utils';
+import { stripePromise, stripePublishableKey } from '@/lib/stripe';
 import type { PayMethod } from '@/types';
 import ErrorBanner from '@/components/ErrorBanner';
 import Spinner from '@/components/Spinner';
@@ -64,8 +64,6 @@ const PAY_METHODS: Array<{ id: PayMethod; title: string; subtitle: string; badge
   { id: 'GRABPAY', title: 'GrabPay', subtitle: 'Coming soon', badge: 'GrabPay', disabled: true },
 ];
 
-const STRIPE_PUBLISHABLE_KEY = (import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY ?? '').trim();
-const stripePromise = STRIPE_PUBLISHABLE_KEY ? loadStripe(STRIPE_PUBLISHABLE_KEY) : null;
 const MOCK_PAYMENT_ENABLED = (import.meta.env.VITE_MOCK_PAYMENT_ENABLED ?? 'false').trim() === 'true';
 
 const STRIPE_ELEMENT_STYLE = {
@@ -226,7 +224,7 @@ function CheckoutScreenContent() {
   const cardCvcRef = useRef<StripeCardCvcElement | null>(null);
 
   const isCoaching = state.bookingType === 'coaching';
-  const stripeConfigured = STRIPE_PUBLISHABLE_KEY.length > 0;
+  const stripeConfigured = stripePublishableKey.length > 0;
 
   // Compute pricing synchronously on every render — no async useEffect needed.
   // This guarantees the correct price is shown even when the user keeps the
