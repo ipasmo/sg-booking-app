@@ -23,6 +23,8 @@ import indoorCricketCard from '@/assets/card_indoor_cricket.png';
 import cricketFacilityImage from '@/assets/cricket_facility.png';
 import cricketCard from '@/assets/card_cricket.png';
 import cricketGear from '@/assets/cricket_gear.png';
+import pickleballIndoorCourt from '@/assets/pb-indoor-court.png';
+import pickleballOutdoorCourt from '@/assets/pb-outdoor-court.png';
 import type { BookingHistoryItem } from '@/types';
 
 const FACILITY_IMAGES = {
@@ -32,6 +34,8 @@ const FACILITY_IMAGES = {
   'nets-4': indoorCricketCard,
   'indoor-court': cricketGear,
   'outdoor-field': cricketFacilityImage,
+  'pb-indoor-court': pickleballIndoorCourt,
+  'pb-outdoor-court': pickleballOutdoorCourt,
 } as const;
 
 type BookingTab = 'upcoming' | 'previous';

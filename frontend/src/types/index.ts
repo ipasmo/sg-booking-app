@@ -22,7 +22,7 @@ export type SportEventImageKey = 'facility' | 'academy' | 'coach' | 'gear';
 export type SportEventActionTarget = 'facility-select' | 'schedule';
 export type SportEventIcon = 'calendar' | 'academy' | 'coach' | 'shop';
 
-export type SportFacilityImageKey = 'bowling-lane' | 'nets-2' | 'nets-3' | 'nets-4' | 'indoor-court' | 'outdoor-field';
+export type SportFacilityImageKey = 'bowling-lane' | 'nets-2' | 'nets-3' | 'nets-4' | 'indoor-court' | 'outdoor-field' | 'pb-indoor-court' | 'pb-outdoor-court';
 export type SportFacilityActionTarget = 'schedule';
 export type SportFacilityIcon = 'lane' | 'net' | 'court' | 'field' | 'academy' | 'gear';
 

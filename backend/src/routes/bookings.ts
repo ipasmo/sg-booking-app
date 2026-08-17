@@ -15,6 +15,8 @@ const FACILITY_IMAGE_KEYS = new Set<SportFacilityRow['imageKey']>([
   'nets-4',
   'indoor-court',
   'outdoor-field',
+  'pb-indoor-court',
+  'pb-outdoor-court',
 ]);
 
 function toFacilityImageKey(value: string | null | undefined): SportFacilityRow['imageKey'] | null {

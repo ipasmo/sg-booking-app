@@ -10,6 +10,8 @@ import bowlingLaneCard from '@/assets/bowling_lane.png';
 import cricketNetsCard from '@/assets/cricket_nets.png';
 import indoorCourtCard from '@/assets/indoor_court.png';
 import cricketFacility from '@/assets/cricket_facility.png';
+import pickleballIndoorCourt from '@/assets/pb-indoor-court.png';
+import pickleballOutdoorCourt from '@/assets/pb-outdoor-court.png';
 
 const SPORT_LABELS = {
   cricket: 'Cricket',
@@ -29,6 +31,8 @@ const FACILITY_IMAGES = {
   'nets-4': cricketNetsCard,
   'indoor-court': indoorCourtCard,
   'outdoor-field': cricketFacility,
+  'pb-indoor-court': pickleballIndoorCourt,
+  'pb-outdoor-court': pickleballOutdoorCourt,
 } as const;
 
 function to12Hour(time: string): string {

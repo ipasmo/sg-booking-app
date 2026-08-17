@@ -42,7 +42,7 @@ export type SportFacilityTemplateRow = {
   tag: string;
   address: string;
   mapLocationUrl: string;
-  imageKey: 'bowling-lane' | 'nets-2' | 'nets-3' | 'nets-4' | 'indoor-court' | 'outdoor-field';
+  imageKey: 'bowling-lane' | 'nets-2' | 'nets-3' | 'nets-4' | 'indoor-court' | 'outdoor-field' | 'pb-indoor-court' | 'pb-outdoor-court';
   icon: 'lane' | 'net' | 'court' | 'field' | 'academy' | 'gear';
   actionTarget: 'schedule';
   enabled: boolean;
@@ -58,7 +58,7 @@ export type SportFacilityRow = {
   tag: string;
   address: string;
   mapLocationUrl: string;
-  imageKey: 'bowling-lane' | 'nets-2' | 'nets-3' | 'nets-4' | 'indoor-court' | 'outdoor-field';
+  imageKey: 'bowling-lane' | 'nets-2' | 'nets-3' | 'nets-4' | 'indoor-court' | 'outdoor-field' | 'pb-indoor-court' | 'pb-outdoor-court';
   icon: 'lane' | 'net' | 'court' | 'field' | 'academy' | 'gear';
   actionTarget: 'schedule';
   enabled: boolean;
@@ -680,7 +680,7 @@ async function ensureSchema(client: PoolClient): Promise<void> {
       tag_label TEXT NOT NULL,
       address TEXT NOT NULL,
       map_location_url TEXT NOT NULL,
-      image_key TEXT NOT NULL CHECK (image_key IN ('bowling-lane', 'nets-2', 'nets-3', 'nets-4', 'indoor-court', 'outdoor-field')),
+      image_key TEXT NOT NULL CHECK (image_key IN ('bowling-lane', 'nets-2', 'nets-3', 'nets-4', 'indoor-court', 'outdoor-field', 'pb-indoor-court', 'pb-outdoor-court')),
       icon TEXT NOT NULL CHECK (icon IN ('lane', 'net', 'court', 'field', 'academy', 'gear')),
       action_target TEXT NOT NULL CHECK (action_target IN ('schedule')),
       enabled BOOLEAN NOT NULL DEFAULT TRUE,
@@ -753,7 +753,20 @@ async function ensureSchema(client: PoolClient): Promise<void> {
   await client.query(`
     ALTER TABLE sport_facilities
     ADD CONSTRAINT sport_facilities_image_key_check
-    CHECK (image_key IN ('bowling-lane', 'nets-2', 'nets-3', 'nets-4', 'indoor-court', 'outdoor-field'))
+    CHECK (image_key IN ('bowling-lane', 'nets-2', 'nets-3', 'nets-4', 'indoor-court', 'outdoor-field', 'pb-indoor-court', 'pb-outdoor-court'))
+  `);
+
+  await client.query(`
+    UPDATE sport_facilities
+    SET image_key = CASE facility_code
+      WHEN 'indoor-court' THEN 'pb-indoor-court'
+      WHEN 'outdoor-field' THEN 'pb-outdoor-court'
+      ELSE image_key
+    END,
+    updated_at = NOW(),
+    updated_by = 'system'
+    WHERE sport_id = 'pickleball'
+      AND facility_code IN ('indoor-court', 'outdoor-field')
   `);
 
   await client.query(`
