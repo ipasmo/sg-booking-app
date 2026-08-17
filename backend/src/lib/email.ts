@@ -19,6 +19,8 @@ function escapeHtml(value: string): string {
     .replace(/'/g, '&#39;');
 }
 
+  const SPORTYGO_BRAND_HTML = '<span style="font-weight:800;color:#ed1c24;">S</span><span style="font-weight:800;color:#f5f5f5;">porty</span><span style="font-weight:800;color:#ed1c24;">G</span><span style="font-weight:800;color:#f5f5f5;">o</span>';
+
 export type BookingConfirmationEmail = {
   email: string;
   receiptId: string;
@@ -53,7 +55,7 @@ export async function sendBookingConfirmationEmail(input: BookingConfirmationEma
   ].join('\n');
   const html = `
     <div style="font-family:Arial,sans-serif;background:#051328;color:#edf1f7;padding:24px;max-width:560px;border-radius:16px;">
-      <p style="margin:0 0 8px;color:#d8ae67;font-size:13px;letter-spacing:.12em;text-transform:uppercase;">SportyGo</p>
+      <p style="margin:0 0 8px;font-size:20px;letter-spacing:.02em;">${SPORTYGO_BRAND_HTML}</p>
       <h1 style="margin:0 0 8px;font-size:26px;">Booking Confirmation</h1>
       <p style="color:#7ccf57;font-weight:700;">${escapeHtml(statusLabel)}</p>
       <div style="border-top:1px solid #273a57;border-bottom:1px solid #273a57;padding:16px 0;">
@@ -89,7 +91,7 @@ export async function sendPasswordResetPasscode(input: { email: string; code: st
 
   const html = `
     <div style="font-family: Arial, sans-serif; background:#051328; color:#edf1f7; padding:24px; border-radius:16px; border:1px solid rgba(212,165,86,0.28); max-width:520px;">
-      <p style="margin:0 0 10px; color:#d8ae67; font-size:13px; letter-spacing:0.12em; text-transform:uppercase;">SportyGo Security</p>
+      <p style="margin:0 0 10px; font-size:20px; letter-spacing:0.02em;">${SPORTYGO_BRAND_HTML}<span style="font-size:13px;font-weight:500;color:#f5f5f5;letter-spacing:0.12em;text-transform:uppercase;"> Security</span></p>
       <h1 style="margin:0 0 12px; font-size:28px; line-height:1.1;">Password Reset</h1>
       <p style="margin:0 0 16px; color:#c6cfdd;">Use this 6-digit passcode to reset your SportyGo password.</p>
       <div style="display:inline-block; padding:14px 20px; border-radius:14px; background:linear-gradient(180deg,#cd2028 0%,#b81421 100%); color:#fff7f7; font-size:28px; font-weight:800; letter-spacing:0.28em;">${input.code}</div>

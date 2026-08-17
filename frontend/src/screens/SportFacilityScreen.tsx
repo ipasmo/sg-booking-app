@@ -11,6 +11,8 @@ import cricketNetsCard from '@/assets/cricket_nets.png';
 import indoorCourtCard from '@/assets/indoor_court.png';
 import fallbackSports from '@/data/json/sports.json';
 import fallbackSportFacilities from '@/data/json/sport-facilities.json';
+import pickleballIndoorCourt from '@/assets/pb-indoor-court.png';
+import pickleballOutdoorCourt from '@/assets/pb-outdoor-court.png';
 import { fetchSportFacilities } from '@/lib/api';
 import type { SportFacilitiesResponse, SportFacilityCard, SportFacilityTemplate, SportId, SportOption } from '@/types';
 
@@ -21,6 +23,8 @@ const FACILITY_IMAGES: Record<SportFacilityCard['imageKey'], string> = {
   'nets-4': cricketNetsCard,
   'indoor-court': indoorCourtCard,
   'outdoor-field': cricketFacility,
+  'pb-indoor-court': pickleballIndoorCourt,
+  'pb-outdoor-court': pickleballOutdoorCourt,
 };
 
 function resolveTemplate(template: string, sportLabel: string): string {
